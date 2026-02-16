@@ -2,13 +2,20 @@ from __future__ import annotations
 
 import pandas as pd
 import plotly.express as px
-from dash import Dash, dcc, html
+from dash import Dash, Input, Output, dcc, html
 from flask import Flask, redirect
 
-try:
-    from .data import load_and_prepare_data
-except ImportError:
-    from data import load_and_prepare_data
+# TODO: Rewrite in Django
+#      - Use real dates from posts, fetch created_at fro X API and convert to datetime
+#      - Add more interactivity (show sentient breakdown for day on click, filter by affiliation, etc.)
+#      - Add trends over time for each affiliation
+#      - Add public metrics for each side (likes, retweets, etc.) and show correlation with sentiment
+#      - Plug in n8n and agent to interpret trends and generate insights (e.g. "Positive sentiment for X is rising, likely due to Y event")
+#      - Use n8n to fetch images for latest trending topics and show in dashboard
+#      - Host on Azure and create a domain for it (e.g. xsignal.ai) to share with others
+
+
+from data import load_and_prepare_data
 
 DASH_INDEX_STRING = """
 <!DOCTYPE html>
@@ -24,8 +31,8 @@ DASH_INDEX_STRING = """
                 theme: {
                     extend: {
                         colors: {
-                            xbg: "#15202B",
-                            xpanel: "#16181C",
+                            xbg: "#050505",
+                            xpanel: "#0b0b0b",
                             xline: "#2F3336",
                             xtext: "#E7E9EA",
                             xmuted: "#71767B",
@@ -51,11 +58,19 @@ DASH_INDEX_STRING = """
 def _apply_dark_style(fig):
     fig.update_layout(
         template="plotly_dark",
-        paper_bgcolor="#16181C",
-        plot_bgcolor="#16181C",
+        paper_bgcolor="#0b0b0b",
+        plot_bgcolor="#0b0b0b",
         font={"color": "#E7E9EA", "family": "Inter, ui-sans-serif, system-ui"},
-        margin={"l": 40, "r": 20, "t": 54, "b": 40},
-        legend={"bgcolor": "rgba(0,0,0,0)", "font": {"color": "#E5E7EB"}},
+        margin={"l": 28, "r": 18, "t": 60, "b": 36},
+        legend={
+            "bgcolor": "rgba(0,0,0,0)",
+            "font": {"color": "#E5E7EB"},
+            "orientation": "h",
+            "yanchor": "bottom",
+            "y": 1.02,
+            "xanchor": "left",
+            "x": 0,
+        },
         hoverlabel={"bgcolor": "#0F1419", "font_color": "#F9FAFB"},
     )
     fig.update_xaxes(gridcolor="#2F3336", linecolor="#2F3336", zerolinecolor="#2F3336")
@@ -75,12 +90,38 @@ def build_figures(df: pd.DataFrame):
         x="day",
         y="sentiment_score",
         markers=True,
-        title="Average Sentiment Score Per Day",
-        labels={"day": "Day", "sentiment_score": "Average Sentiment Score"},
+        # title="Average Sentiment Score Per Day",
+        labels={"day": "Date", "sentiment_score": "Average Score"},
     )
     line_fig.update_traces(line={"color": "#38BDF8", "width": 3}, marker={"size": 7, "color": "#A78BFA"})
-    line_fig.add_hline(y=0, line_dash="dash", line_color="#94A3B8")
+
+    reference_x = avg_daily["day"].tolist()
+    line_fig.add_scatter(
+        x=reference_x,
+        y=[1.0] * len(reference_x),
+        mode="lines",
+        name="1 = Positive",
+        line={"color": "#22C55E", "width": 1.5, "dash": "dot"},
+        hoverinfo="skip",
+    )
+    line_fig.add_scatter(
+        x=reference_x,
+        y=[0.0] * len(reference_x),
+        mode="lines",
+        name="0 = Neutral",
+        line={"color": "#94A3B8", "width": 1.5, "dash": "dash"},
+        hoverinfo="skip",
+    )
+    line_fig.add_scatter(
+        x=reference_x,
+        y=[-1.0] * len(reference_x),
+        mode="lines",
+        name="-1 = Negative",
+        line={"color": "#EF4444", "width": 1.5, "dash": "dot"},
+        hoverinfo="skip",
+    )
     _apply_dark_style(line_fig)
+    # line_fig.update_layout(plot_bgcolor="#0b0b0b")
 
     label_counts = (
         df.groupby(["spectrum", "sentiment_label"])  # affiliation by sentiment label
@@ -95,7 +136,7 @@ def build_figures(df: pd.DataFrame):
         y="count",
         color="sentiment_label",
         barmode="stack",
-        title="Sentiment Label Distribution by Affiliation",
+        # title="Sentiment Label Distribution by Affiliation",
         labels={
             "spectrum": "Affiliation",
             "count": "Number of Posts",
@@ -141,29 +182,16 @@ def init_dashboard(server):
                 ],
             ),
             html.Div(
-                className="max-w-[1320px] mx-auto px-4 md:px-6 py-6",
+                className="max-w-[1700px] mx-auto px-4 md:px-8 lg:px-10 py-6",
                 children=[
                     html.Div(
-                        className="grid grid-cols-12 gap-6",
+                        className="w-full",
                         children=[
-                            html.Aside(
-                                className="hidden lg:block col-span-3",
-                                children=[
-                                    html.Div(
-                                        className="rounded-2xl border border-xline bg-xpanel p-4",
-                                        children=[
-                                            html.Div("Overview", className="text-sm font-medium text-xtext py-2"),
-                                            html.Div("Daily Sentiment", className="text-sm text-xmuted py-2"),
-                                            html.Div("Affiliation Distribution", className="text-sm text-xmuted py-2"),
-                                        ],
-                                    )
-                                ],
-                            ),
                             html.Main(
-                                className="col-span-12 lg:col-span-9 space-y-6",
+                                className="space-y-8",
                                 children=[
                                     html.Div(
-                                        className="rounded-2xl border border-xline bg-xpanel p-5",
+                                        className="rounded-2xl border-2 border-xline bg-xpanel p-6",
                                         children=[
                                             html.H1(
                                                 "Sentiment Dashboard",
@@ -175,40 +203,41 @@ def init_dashboard(server):
                                             ),
                                         ],
                                     ),
-                                    html.Section(
-                                        className="rounded-2xl border border-xline bg-xpanel p-4 md:p-5",
+                                    html.Div(
+                                        className="grid grid-cols-1 xl:grid-cols-[7fr_3fr] gap-8",
                                         children=[
-                                            html.H2(
-                                                "Average Sentiment Score Per Day",
-                                                className="text-lg font-semibold text-xtext mb-3",
-                                            ),
-                                            html.Div(
-                                                className="max-w-5xl",
+                                            html.Section(
+                                                className="rounded-2xl border-2 border-xline bg-xpanel p-6",
                                                 children=[
+                                                    html.H2(
+                                                        "Average Sentiment Score Per Day",
+                                                        className="text-lg font-semibold text-xtext mb-3",
+                                                    ),
                                                     dcc.Graph(
+                                                        id="daily-sentiment-graph",
                                                         figure=line_fig,
                                                         config={"displayModeBar": False},
-                                                        style={"height": "420px"},
-                                                    )
+                                                        style={"height": "520px", "width": "100%"},
+                                                    ),
+                                                    html.Div(
+                                                        id="daily-sentiment-hover-info",
+                                                        className="mt-3 rounded-lg border border-xline bg-xbg px-3 py-2 text-sm text-xmuted",
+                                                        children="Hover over a point to see details here.",
+                                                    ),
                                                 ],
                                             ),
-                                        ],
-                                    ),
-                                    html.Section(
-                                        className="rounded-2xl border border-xline bg-xpanel p-4 md:p-5",
-                                        children=[
-                                            html.H2(
-                                                "Sentiment Label Distribution by Affiliation",
-                                                className="text-lg font-semibold text-xtext mb-3",
-                                            ),
-                                            html.Div(
-                                                className="max-w-5xl",
+                                            html.Section(
+                                                className="rounded-2xl border-2 border-xline bg-xpanel p-6",
                                                 children=[
+                                                    html.H2(
+                                                        "Sentiment Label Distribution by Affiliation",
+                                                        className="text-lg font-semibold text-xtext mb-3",
+                                                    ),
                                                     dcc.Graph(
                                                         figure=bar_fig,
                                                         config={"displayModeBar": False},
-                                                        style={"height": "420px"},
-                                                    )
+                                                        style={"height": "520px", "width": "100%"},
+                                                    ),
                                                 ],
                                             ),
                                         ],
@@ -221,6 +250,22 @@ def init_dashboard(server):
             )
         ],
     )
+
+    @dash_app.callback(
+        Output("daily-sentiment-hover-info", "children"),
+        Input("daily-sentiment-graph", "hoverData"),
+    )
+    def show_daily_hover_details(hover_data):
+        if not hover_data or "points" not in hover_data or not hover_data["points"]:
+            return "Hover over a point to see details here."
+
+        point = hover_data["points"][0]
+        day_value = point.get("x", "N/A")
+        score_value = point.get("y")
+        if score_value is None:
+            return f"Day: {day_value}"
+
+        return f"Day: {day_value} | Average Sentiment Score: {float(score_value):.4f}"
 
     return dash_app
 
