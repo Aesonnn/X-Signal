@@ -1,0 +1,7 @@
+pandas
+requests
+python-dotenv
+flask
+dash
+plotly
+nltk
