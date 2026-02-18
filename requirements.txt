@@ -1,7 +1,6 @@
 pandas
 requests
 python-dotenv
-flask
-dash
+django
 plotly
 nltk

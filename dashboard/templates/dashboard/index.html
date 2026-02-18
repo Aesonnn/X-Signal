@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>X-Signal Dashboard (Django)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            xbg: "#050505",
+            xpanel: "#0b0b0b",
+            xline: "#2F3336",
+            xtext: "#E7E9EA",
+            xmuted: "#71767B"
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="/static/dashboard/css/styles.css" />
+</head>
+<body class="min-h-full bg-xbg text-xtext font-sans">
+  <header class="border-b border-xline bg-xbg/95">
+    <div class="max-w-[1320px] mx-auto px-4 md:px-6 py-4 flex items-center justify-between">
+      <div class="text-xl font-semibold tracking-tight text-white">X-Signal</div>
+      <div class="text-sm text-xmuted">Sentiment Dashboard (Django)</div>
+    </div>
+  </header>
+
+  <main class="max-w-[1700px] mx-auto px-4 md:px-8 lg:px-10 py-6 space-y-8">
+    <section class="rounded-2xl border-2 border-xline bg-xpanel p-6 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+      <div>
+        <h1 class="text-2xl md:text-3xl font-bold tracking-tight text-white">Sentiment Dashboard</h1>
+        <p class="mt-1 text-xmuted text-sm">Django backend with daily trend and affiliation sentiment distribution.</p>
+      </div>
+      <form method="get" class="w-full md:w-auto md:min-w-[250px]">
+        <label for="affiliation" class="block mb-2 text-sm font-medium text-xmuted">Filter by Affiliation</label>
+        <select
+          id="affiliation"
+          name="affiliation"
+          class="w-full rounded-md border border-xline bg-xbg px-3 py-2 text-sm text-xtext focus:outline-none focus:ring-2 focus:ring-sky-500"
+          onchange="this.form.submit()"
+        >
+          <option value="ALL" {% if selected_affiliation == 'ALL' %}selected{% endif %}>All</option>
+          {% for option in affiliation_options %}
+            <option value="{{ option }}" {% if selected_affiliation == option %}selected{% endif %}>{{ option }}</option>
+          {% endfor %}
+        </select>
+      </form>
+    </section>
+
+    <section class="grid grid-cols-1 xl:grid-cols-[7fr_3fr] gap-8">
+      <div class="rounded-2xl border-2 border-xline bg-xpanel p-6">
+        <h2 class="text-lg font-semibold text-xtext mb-3">Average Sentiment Score Per Day</h2>
+        {{ line_chart|safe }}
+        <div id="daily-hover-info" class="mt-3 rounded-lg border border-xline bg-xbg px-3 py-2 text-sm text-xmuted">
+          Hover over a point to see details here.
+        </div>
+
+        <!-- Global Trends Section -->
+        <div class="mt-8 pt-6 border-t border-xline">
+          <h2 class="text-xl font-bold tracking-tight text-white mb-4">Global & Week Trends</h2>
+          
+          <div class="mb-6">
+            <h3 class="text-sm font-medium text-xmuted mb-3">Top Discussion Topics (All Time)</h3>
+            <div class="flex flex-wrap gap-2">
+              {% for trend in global_trends %}
+                <div class="px-3 py-1 bg-xline rounded-full text-sm text-xblue border border-xline">#{{ trend.term }}</div>
+              {% empty %}
+                <div class="text-sm text-xmuted">No trends available.</div>
+              {% endfor %}
+            </div>
+          </div>
+
+          <h3 class="text-sm font-medium text-xmuted mb-3">Trends by Affiliation</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {% for aff, trends in trends_by_affiliation.items %}
+              <div class="bg-xbg p-4 rounded-xl border border-xline">
+                <h4 class="text-md font-semibold text-xtext mb-2">{{ aff }}</h4>
+                <div class="space-y-1">
+                  {% for trend in trends %}
+                    <div class="text-sm text-xmuted">#{{ trend.term }} ({{ trend.count }})</div>
+                  {% empty %}
+                    <div class="text-sm text-xmuted">No trends.</div>
+                  {% endfor %}
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      <div class="rounded-2xl border-2 border-xline bg-xpanel p-6">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-lg font-semibold text-xtext">Sentiment Label Distribution</h2>
+          <button id="reset-bar-chart" class="hidden px-3 py-1 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition">
+            Show All Time
+          </button>
+        </div>
+        {{ bar_chart|safe }}
+        <div id="daily-click-breakdown" class="mt-3 rounded-lg border border-xline bg-xbg px-3 py-3 text-sm text-xmuted">
+          Click on a point on the line chart to see affiliation post totals and metrics for that day.
+        </div>
+      </div>
+    </section>
+
+    <!-- Correlation Analysis -->
+    <section class="rounded-2xl border-2 border-xline bg-xpanel p-6">
+      <h2 class="text-xl font-bold tracking-tight text-white mb-4">Sentiment Correlation Analysis</h2>
+      <p class="text-sm text-xmuted mb-4">Correlation coefficients (-1.0 to 1.0) between sentiment score and public metrics. Positive values indicate higher sentiment aligns with higher engagement.</p>
+      
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm text-left text-xtext">
+          <thead class="text-xs text-xmuted uppercase bg-xline/50 border-b border-xline">
+            <tr>
+              <th scope="col" class="px-4 py-3 rounded-tl-lg">Affiliation</th>
+              <th scope="col" class="px-4 py-3">Likes</th>
+              <th scope="col" class="px-4 py-3">Retweets</th>
+              <th scope="col" class="px-4 py-3">Replies</th>
+              <th scope="col" class="px-4 py-3 rounded-tr-lg">Impressions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in correlation_data %}
+              <tr class="border-b border-xline last:border-0 hover:bg-xline/10 transition">
+                <td class="px-4 py-3 font-medium {% if row.is_global %}text-xblue{% endif %}">
+                  {{ row.affiliation }}
+                </td>
+                <td class="px-4 py-3">{{ row.like_count }}</td>
+                <td class="px-4 py-3">{{ row.retweet_count }}</td>
+                <td class="px-4 py-3">{{ row.reply_count }}</td>
+                <td class="px-4 py-3">{{ row.impression_count }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  {{ day_breakdown|json_script:"day-breakdown-data" }}
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      const MAX_RETRIES = 20;
+      let retries = 0;
+      
+      // Store original bar chart data
+      // We will grab it once Plotly initializes the bar chart div
+      let originalBarData = null;
+      let originalBarLayout = null;
+
+      function bindHoverInfo() {
+        const lineChartRoot = document.getElementById("daily-line-chart");
+        const barChartRoot = document.getElementById("affiliation-bar-chart");
+        const info = document.getElementById("daily-hover-info");
+        const breakdown = document.getElementById("daily-click-breakdown");
+        const resetBtn = document.getElementById("reset-bar-chart");
+        const payloadNode = document.getElementById("day-breakdown-data");
+        const breakdownData = payloadNode ? JSON.parse(payloadNode.textContent) : {};
+
+        // Wait until Plotly attaches the .on method
+        // Sometimes chartRoot is present but .on is not yet there (Plotly initializing)
+        if (!lineChartRoot || typeof lineChartRoot.on !== "function" || !barChartRoot || !barChartRoot.data) {
+          if (retries < MAX_RETRIES) {
+            retries++;
+            // Check again shortly
+            setTimeout(bindHoverInfo, 300);
+            return;
+          }
+          console.warn("Plotly chart not initialized after retries.");
+          return;
+        }
+
+        // Capture original state on first load
+        if (!originalBarData) {
+            originalBarData = JSON.parse(JSON.stringify(barChartRoot.data));
+            originalBarLayout = JSON.parse(JSON.stringify(barChartRoot.layout));
+        }
+        
+        // Reset Button Logic
+        if (resetBtn) {
+            resetBtn.onclick = function() {
+                if (originalBarData) {
+                    Plotly.react(barChartRoot, originalBarData, originalBarLayout);
+                    resetBtn.classList.add("hidden");
+                    breakdown.innerHTML = "Click on a point on the line chart to see affiliation post totals and metrics for that day.";
+                }
+            };
+        }
+
+        lineChartRoot.on("plotly_hover", function (eventData) {
+          const point = eventData?.points?.[0];
+          if (!point) {
+            return;
+          }
+          const day = point.x;
+          // Some charts have 'text' as well, but 'y' is the score
+          // The line chart should have 'y' as main value
+          const score = Number(point.y);
+          if (Number.isNaN(score)) {
+            info.textContent = `Day: ${day}`;
+            return;
+          }
+          info.textContent = `Day: ${day} | Average Sentiment Score: ${score.toFixed(4)}`;
+        });
+
+        lineChartRoot.on("plotly_unhover", function () {
+          info.textContent = "Hover over a point to see details here.";
+        });
+
+        lineChartRoot.on("plotly_click", function (eventData) {
+          if (!breakdown) {
+            return;
+          }
+
+          const point = eventData?.points?.[0];
+          const customData = point?.customdata;
+          const customDay = Array.isArray(customData) ? customData[0] : customData;
+          const rawDay = customDay || point?.x;
+          const dayStr = rawDay == null ? "" : String(rawDay);
+
+          // Handle potential date format differences in keys
+          const normalizedCandidates = [
+            dayStr,
+            dayStr.split("T")[0],
+            dayStr.split(" ")[0],
+          ].filter(Boolean);
+
+          let matchedDayKey = null;
+          for (const candidate of normalizedCandidates) {
+            if (breakdownData[candidate]) {
+              matchedDayKey = candidate;
+              break;
+            }
+          }
+
+          if (!matchedDayKey) {
+            breakdown.textContent = `No day summary available for ${dayStr || "selected point"}.`;
+            return;
+          }
+
+          const dayInfo = breakdownData[matchedDayKey];
+          
+          // Update Bar Chart for this day
+          if (dayInfo.sentiment_distribution && barChartRoot) {
+              updateBarChartForDay(barChartRoot, dayInfo.sentiment_distribution, matchedDayKey);
+              if (resetBtn) resetBtn.classList.remove("hidden");
+          }
+
+          const dayTrendsHtml = (dayInfo.trends || [])
+            .map(t => `<span class="mr-2 px-2 py-1 bg-xline rounded-md text-xs text-xblue">#${t.term}</span>`)
+            .join("");
+
+          const rowsHtml = dayInfo.rows
+            .map((row) => {
+              const affTrendsHtml = (row.trends || [])
+                .map(t => `<div class="text-xs text-xmuted">#${t.term}</div>`)
+                .join("");
+
+              return `
+              <div class="rounded-lg border border-xline bg-xpanel px-3 py-2 mt-2">
+                <div class="font-medium text-xtext">Affiliation: ${row.affiliation}</div>
+                <div class="text-xmuted mt-1">Posts: ${row.post_count}</div>
+                <div class="grid grid-cols-2 gap-2 mt-2 text-xs">
+                   <div class="text-xmuted">Likes: ${row.likes}</div>
+                   <div class="text-xmuted">RTs: ${row.retweets}</div>
+                </div>
+                <div class="mt-2 pt-2 border-t border-xline">
+                  <div class="text-[10px] uppercase tracking-wider text-xmuted mb-1">Top Trends</div>
+                  <div class="space-y-1">${affTrendsHtml || "N/A"}</div>
+                </div>
+              </div>
+            `})
+            .join("");
+
+          breakdown.innerHTML = `
+            <div class="font-medium text-xtext">Selected Day: ${matchedDayKey}</div>
+            <div class="text-xmuted mt-1">Total Posts: ${dayInfo.total_posts}</div>
+            <div class="text-xs text-xmuted mt-2 mb-1">Daily Trends:</div>
+            <div class="flex flex-wrap gap-2 mb-3">${dayTrendsHtml || "No clear trends."}</div>
+            <div class="mt-2 grid grid-cols-1 gap-2">${rowsHtml}</div>
+          `;
+        });
+      };
+      
+      function updateBarChartForDay(chartDiv, distribution, dayLabel) {
+          // distribution: [{spectrum, sentiment_label, count}, ...]
+          // We need to map this to traces: "positive", "neutral", "negative"
+          const sentimentOrder = ["negative", "neutral", "positive"];
+          const colors = {"negative": "#EF4444", "neutral": "#F59E0B", "positive": "#22C55E"};
+          
+          // Get all unique affiliations to ensure X axis is consistent
+          const affiliations = [...new Set(distribution.map(d => d.spectrum))].sort();
+          
+          const traces = [];
+          
+          sentimentOrder.forEach(sentiment => {
+              const xInfo = [];
+              const yInfo = [];
+              
+              affiliations.forEach(aff => {
+                  const items = distribution.filter(d => d.spectrum === aff && d.sentiment_label === sentiment);
+                  const count = items.reduce((sum, i) => sum + i.count, 0);
+                  xInfo.push(aff);
+                  yInfo.push(count);
+              });
+              
+              traces.push({
+                  x: xInfo,
+                  y: yInfo,
+                  name: sentiment,
+                  type: 'bar',
+                  marker: { color: colors[sentiment] }
+              });
+          });
+          
+          const newLayout = JSON.parse(JSON.stringify(originalBarLayout || {}));
+          {% comment %} newLayout.title = { text: `Sentiment Distribution for ${dayLabel}`, font: { color: "#E7E9EA" } }; {% endcomment %}
+          
+          Plotly.react(chartDiv, traces, newLayout);
+      }
+      
+      bindHoverInfo();
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+.js-plotly-plot,
+.plotly,
+.plot-container {
+  width: 100% !important;
+}
+
+#daily-line-chart,
+#affiliation-bar-chart {
+  min-height: 520px;
+}

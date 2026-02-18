@@ -65,7 +65,7 @@ def _fetch_recent_posts_for_user_id(
     params = {
         "max_results": safe_max_results,
         "exclude": "replies,retweets",
-        "tweet.fields": "id,text,author_id,public_metrics,created_at",
+        "tweet.fields": "id,text,author_id,public_metrics,created_at,non_public_metrics",
     }
     response = requests.get(url, headers=headers, params=params, timeout=20)
     if response.status_code >= 400:
