@@ -2,5 +2,6 @@ pandas
 requests
 python-dotenv
 django
+psycopg2-binary
 plotly
 nltk

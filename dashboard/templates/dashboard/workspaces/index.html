@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>My Workspaces · X-Signal</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-full bg-[#050505] text-[#E7E9EA] font-sans">
+  <main class="max-w-6xl mx-auto px-4 py-8 space-y-8">
+    <header class="flex items-center justify-between">
+      <div>
+        <h1 class="text-2xl font-bold text-white">My Dashboard Workspaces</h1>
+        <p class="text-sm text-[#71767B]">Create separate workspaces for future account-specific tracking and API credentials.</p>
+      </div>
+      <form method="post" action="{% url 'logout' %}">
+        {% csrf_token %}
+        <button class="rounded-md border border-[#2F3336] px-3 py-2 text-sm text-[#E7E9EA]">Logout</button>
+      </form>
+    </header>
+
+    {% if messages %}
+      <section class="space-y-2">
+        {% for message in messages %}
+          <div class="rounded-lg border border-[#2F3336] bg-[#0b0b0b] px-4 py-3 text-sm">{{ message }}</div>
+        {% endfor %}
+      </section>
+    {% endif %}
+
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div class="rounded-2xl border border-[#2F3336] bg-[#0b0b0b] p-6">
+        <h2 class="text-lg font-semibold text-white mb-4">Create Workspace</h2>
+        <form method="post" action="{% url 'create_user_dashboard' %}" class="space-y-4">
+          {% csrf_token %}
+          <div>
+            <label class="block text-sm text-[#71767B] mb-1">Name</label>
+            {{ form.name }}
+            <div class="text-xs text-red-300 mt-1">{{ form.name.errors }}</div>
+          </div>
+          <div>
+            <label class="block text-sm text-[#71767B] mb-1">Selected Accounts (future use)</label>
+            {{ form.selected_accounts }}
+            <div class="text-xs text-red-300 mt-1">{{ form.selected_accounts.errors }}</div>
+          </div>
+          <div>
+            <label class="block text-sm text-[#71767B] mb-1">X API Key (future use)</label>
+            {{ form.x_api_key }}
+            <div class="text-xs text-red-300 mt-1">{{ form.x_api_key.errors }}</div>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-sm text-[#71767B] mb-1">Window Days</label>
+              {{ form.fetch_window_days }}
+              <div class="text-xs text-red-300 mt-1">{{ form.fetch_window_days.errors }}</div>
+            </div>
+            <div>
+              <label class="block text-sm text-[#71767B] mb-1">Posts per Account</label>
+              {{ form.fetch_posts_per_account }}
+              <div class="text-xs text-red-300 mt-1">{{ form.fetch_posts_per_account.errors }}</div>
+            </div>
+          </div>
+          <button type="submit" class="rounded-md bg-[#1D9BF0] px-3 py-2 text-sm font-medium text-white">Create</button>
+        </form>
+      </div>
+
+      <div class="rounded-2xl border border-[#2F3336] bg-[#0b0b0b] p-6">
+        <h2 class="text-lg font-semibold text-white mb-4">Your Workspaces</h2>
+        <div class="space-y-3">
+          {% for dashboard in dashboards %}
+            <div class="rounded-xl border border-[#2F3336] bg-[#050505] px-4 py-3">
+              <a href="{% url 'dashboard' %}?workspace={{ dashboard.id }}" class="block hover:opacity-95 transition">
+                <div class="text-sm font-medium text-white">{{ dashboard.name }}</div>
+                <div class="text-xs text-[#71767B] mt-1">Updated: {{ dashboard.updated_at }}</div>
+              </a>
+              <div class="mt-3 flex items-center justify-between gap-3">
+                <div class="text-xs text-[#71767B]">{{ dashboard.fetch_window_days }}d · {{ dashboard.fetch_posts_per_account }} posts/account</div>
+                <div class="flex items-center gap-2">
+                  <a href="{% url 'edit_user_dashboard' dashboard.id %}" class="rounded-md border border-[#2F3336] px-3 py-2 text-xs text-[#E7E9EA]">Edit</a>
+                  <form method="post" action="{% url 'sync_dashboard_posts' dashboard.id %}">
+                    {% csrf_token %}
+                    <button type="submit" class="rounded-md bg-[#1D9BF0] px-3 py-2 text-xs font-medium text-white">Fetch Posts</button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          {% empty %}
+            <div class="text-sm text-[#71767B]">No workspaces yet. Create one to continue.</div>
+          {% endfor %}
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

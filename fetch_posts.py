@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from typing import Any, Dict, List
 
 import pandas as pd
@@ -6,7 +7,19 @@ import requests
 
 API_BASE = "https://api.x.com/2"
 IDS_CSV_PATH = "ids.csv"
-POSTS_PER_USER = 20
+POSTS_PER_USER = 10
+
+
+def _build_date_to_today_range() -> Dict[str, str]:
+    now_utc = datetime.now(timezone.utc)
+    start_utc = datetime(now_utc.year, 2, 19, 0, 0, 0, tzinfo=timezone.utc)
+    if now_utc < start_utc:
+        start_utc = datetime(now_utc.year - 1, 2, 19, 0, 0, 0, tzinfo=timezone.utc)
+
+    return {
+        "start_time": start_utc.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "end_time": now_utc.strftime("%Y-%m-%dT%H:%M:%SZ"),
+    }
 
 
 def _get_bearer_token(env_path: str = ".env") -> str:
@@ -65,7 +78,8 @@ def _fetch_recent_posts_for_user_id(
     params = {
         "max_results": safe_max_results,
         "exclude": "replies,retweets",
-        "tweet.fields": "id,text,author_id,public_metrics,created_at,non_public_metrics",
+        "tweet.fields": "id,text,author_id,public_metrics,created_at",
+        **_build_date_to_today_range(),
     }
     response = requests.get(url, headers=headers, params=params, timeout=20)
     if response.status_code >= 400:
@@ -91,6 +105,7 @@ def main() -> None:
                     "text": post.get("text"),
                     "author_id": post.get("author_id"),
                     "public_metrics": post.get("public_metrics"),
+                    "created_at": post.get("created_at"),
                     "name": target.get("name"),
                     "spectrum": target.get("Spectrum"),
                 }
@@ -104,8 +119,8 @@ def main() -> None:
     print(f"Retrieved {len(df)} posts total from {len(targets)} users listed in {IDS_CSV_PATH}.")
     print(df)
 
-    df.to_csv("recent_posts_from_ids.csv", index=False)
-    print("Saved data to recent_posts_from_ids.csv")
+    df.to_csv("recent_posts_19-2102.csv", index=False)
+    print("Saved data to recent_posts_19-2102.csv")
 
 
 if __name__ == "__main__":

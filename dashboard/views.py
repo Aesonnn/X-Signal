@@ -1,20 +1,45 @@
 from __future__ import annotations
 
+import json
+import os
 import re
+from datetime import timedelta
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
+import requests
 from sklearn.feature_extraction.text import CountVectorizer
 
-from django.shortcuts import render
+from django.contrib.auth import login
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.core.cache import cache
+from django.http import JsonResponse
+from django.shortcuts import redirect, render
+from django.urls import reverse
+from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
 
-from .services import load_and_prepare_data
+from .models import (
+    DailyAffiliationMetric,
+    DailyGlobalMetric,
+    Post,
+    Rolling7dAffiliationMetric,
+    Rolling7dGlobalMetric,
+    UserDashboard,
+)
+from .forms import SignUpForm, UserDashboardForm
+from .repositories import get_day_click_payload
+from .x_api import sync_workspace_posts
 
 
-def extract_trends(df: pd.DataFrame, top_n: int = 5):
-    if df.empty:
-        return []
+N8N_REPLY_CACHE_KEY = "n8n_latest_reply_payload"
+N8N_REPLY_CACHE_TTL_SECONDS = 60 * 60 * 24 * 7
+N8N_REPLY_AUTH_TOKEN = os.getenv("N8N_REPLY_AUTH_TOKEN", "xsignal-n8n-reply-2026")
 
-    text_data = df["text"].dropna().astype(str).tolist()
+
+def extract_trends_from_texts(text_data: list[str], top_n: int = 5):
     if not text_data:
         return []
 
@@ -35,60 +60,38 @@ def extract_trends(df: pd.DataFrame, top_n: int = 5):
         return []
 
 
-def _build_day_breakdown_payload(df: pd.DataFrame) -> dict:
-    payload = {}
-    if df.empty:
+def _build_day_breakdown_payload(selected_affiliation: str) -> dict:
+    payload: dict[str, dict] = {}
+
+    if selected_affiliation == "ALL":
+        for day in DailyGlobalMetric.objects.order_by("day").values_list("day", flat=True):
+            data = get_day_click_payload(day)
+            if data:
+                payload[str(day)] = data
         return payload
 
-    working_df = df.copy()
-    working_df["day"] = working_df["day"].astype(str)
-
-    for day, day_data in df.groupby("day"):
-        day = str(day)
-        rows = []
-        
-        # Affiliation stats for this day
-        aff_grouped = day_data.groupby("spectrum")
-        for aff_code, aff_rows in aff_grouped:
-            post_count = len(aff_rows)
-            aff_code = str(aff_code)
-            
-            # Trends for this affiliation on this day
-            aff_day_trends = extract_trends(aff_rows, top_n=3)
-            
-            rows.append(
+    day_rows = DailyAffiliationMetric.objects.filter(affiliation=selected_affiliation).order_by("day")
+    for row in day_rows:
+        payload[str(row.day)] = {
+            "rows": [
                 {
-                    "affiliation": aff_code,
-                    "post_count": post_count,
-                    "likes": int(aff_rows["like_count"].sum()) if "like_count" in aff_rows else 0,
-                    "retweets": int(aff_rows["retweet_count"].sum()) if "retweet_count" in aff_rows else 0,
-                    "replies": int(aff_rows["reply_count"].sum()) if "reply_count" in aff_rows else 0,
-                    "impressions": int(aff_rows["impression_count"].sum()) if "impression_count" in aff_rows else 0,
-                    "trends": aff_day_trends,
+                    "affiliation": row.affiliation,
+                    "post_count": row.posts_count,
+                    "likes": row.likes_sum,
+                    "retweets": row.retweets_sum,
+                    "replies": row.replies_sum,
+                    "impressions": row.impressions_sum,
+                    "trends": row.top_trends,
                 }
-            )
-
-        # Trends for the whole day
-        day_overall_trends = extract_trends(day_data, top_n=5)
-        
-        # Sentiment distribution for bar chart update
-        # We need a list of dicts: {spectrum: '...', sentiment_label: '...', count: N}
-        sentiment_counts = day_data.groupby(["spectrum", "sentiment_label"]).size().reset_index(name="count")
-        sentiment_distribution = []
-        for _, r in sentiment_counts.iterrows():
-            sentiment_distribution.append({
-                "spectrum": str(r["spectrum"]),
-                "sentiment_label": str(r["sentiment_label"]),
-                "count": int(r["count"])
-            })
-
-        payload[day] = {
-            "rows": rows,
-            "total_posts": int(len(day_data)),
-            "trends": day_overall_trends,
-            "sentiment_distribution": sentiment_distribution,
+            ],
+            "total_posts": row.posts_count,
+            "trends": row.top_trends,
+            "sentiment_distribution": [
+                {"spectrum": row.affiliation, "sentiment_label": "negative", "count": row.negative_count},
+                {"spectrum": row.affiliation, "sentiment_label": "neutral", "count": row.neutral_count},
+                {"spectrum": row.affiliation, "sentiment_label": "positive", "count": row.positive_count},
+            ],
         }
-
     return payload
 
 
@@ -115,8 +118,22 @@ def _apply_dark_style(fig):
     return fig
 
 
-def _build_figures(df: pd.DataFrame):
-    avg_daily = df.groupby("day", as_index=False)["sentiment_score"].mean().sort_values("day")
+def _build_figures(line_df: pd.DataFrame, bar_df: pd.DataFrame | None = None):
+    if bar_df is None:
+        bar_df = line_df
+
+    if line_df.empty:
+        empty_line = go.Figure()
+        empty_line.update_layout(title="No data available")
+        _apply_dark_style(empty_line)
+
+        if bar_df.empty:
+            empty_bar = go.Figure()
+            empty_bar.update_layout(title="No data available")
+            _apply_dark_style(empty_bar)
+            return empty_line, empty_bar
+
+    avg_daily = line_df.groupby("day", as_index=False)["sentiment_score"].mean().sort_values("day")
 
     line_fig = px.line(
         avg_daily,
@@ -155,25 +172,36 @@ def _build_figures(df: pd.DataFrame):
     )
     _apply_dark_style(line_fig)
 
-    label_counts = df.groupby(["spectrum", "sentiment_label"]).size().reset_index(name="count")
-    bar_fig = px.bar(
-        label_counts,
-        x="spectrum",
-        y="count",
-        color="sentiment_label",
-        barmode="stack",
-        labels={
-            "spectrum": "Affiliation",
-            "count": "Number of Posts",
-            "sentiment_label": "Sentiment",
-        },
-        category_orders={"sentiment_label": ["negative", "neutral", "positive"]},
-        color_discrete_map={
-            "negative": "#EF4444",
-            "neutral": "#F59E0B",
-            "positive": "#22C55E",
-        },
-    )
+    if bar_df.empty:
+        bar_fig = go.Figure()
+        bar_fig.update_layout(title="No data in last 7 days")
+        _apply_dark_style(bar_fig)
+    else:
+        if "count" in bar_df.columns:
+            label_counts = (
+                bar_df.groupby(["affiliation", "sentiment_label"], as_index=False)["count"]
+                .sum()
+            )
+        else:
+            label_counts = bar_df.groupby(["affiliation", "sentiment_label"]).size().reset_index(name="count")
+        bar_fig = px.bar(
+            label_counts,
+            x="affiliation",
+            y="count",
+            color="sentiment_label",
+            barmode="stack",
+            labels={
+                "affiliation": "Affiliation",
+                "count": "Number of Posts",
+                "sentiment_label": "Sentiment",
+            },
+            category_orders={"sentiment_label": ["negative", "neutral", "positive"]},
+            color_discrete_map={
+                "negative": "#EF4444",
+                "neutral": "#F59E0B",
+                "positive": "#22C55E",
+            },
+        )
     _apply_dark_style(bar_fig)
 
     line_fig.update_layout(hovermode="x")
@@ -187,31 +215,482 @@ def _get_correlation(df, metric_col):
     return round(val, 3) if not pd.isna(val) else 0.0
 
 
+def _get_latest_rolling_affiliation_rows(selected_affiliation: str):
+    if selected_affiliation == "ALL":
+        latest_global = Rolling7dGlobalMetric.objects.order_by("-window_end_day").first()
+        if not latest_global:
+            return []
+        return list(
+            Rolling7dAffiliationMetric.objects.filter(window_end_day=latest_global.window_end_day).order_by("affiliation")
+        )
+
+    latest_aff = (
+        Rolling7dAffiliationMetric.objects.filter(affiliation=selected_affiliation)
+        .order_by("-window_end_day")
+        .first()
+    )
+    if not latest_aff:
+        return []
+    return [latest_aff]
+
+
+def _build_bar_df_from_rolling_rows(rolling_rows):
+    records = []
+    for row in rolling_rows:
+        records.append({"affiliation": row.affiliation, "sentiment_label": "negative", "count": row.negative_count})
+        records.append({"affiliation": row.affiliation, "sentiment_label": "neutral", "count": row.neutral_count})
+        records.append({"affiliation": row.affiliation, "sentiment_label": "positive", "count": row.positive_count})
+    return pd.DataFrame(records)
+
+
+def _get_weekly_trends_from_rolling(selected_affiliation: str):
+    if selected_affiliation == "ALL":
+        latest_global = Rolling7dGlobalMetric.objects.order_by("-window_end_day").first()
+        if not latest_global:
+            return [], {}
+
+        aff_rows = Rolling7dAffiliationMetric.objects.filter(window_end_day=latest_global.window_end_day).order_by("affiliation")
+        trends_by_affiliation = {row.affiliation: (row.top_trends or []) for row in aff_rows}
+        return latest_global.top_trends or [], trends_by_affiliation
+
+    latest_aff = (
+        Rolling7dAffiliationMetric.objects.filter(affiliation=selected_affiliation)
+        .order_by("-window_end_day")
+        .first()
+    )
+    if not latest_aff:
+        return [], {}
+    return latest_aff.top_trends or [], {latest_aff.affiliation: latest_aff.top_trends or []}
+
+
+def _get_daily_top_trends_last_7_days(selected_affiliation: str):
+    if selected_affiliation == "ALL":
+        rows = DailyGlobalMetric.objects.order_by("-day")[:7]
+        results = []
+        for row in rows:
+            trends = row.top_trends or []
+            top_trend = trends[0] if trends else {}
+            results.append(
+                {
+                    "day": str(row.day),
+                    "term": top_trend.get("term", "N/A"),
+                    "count": int(top_trend.get("count", 0) or 0),
+                }
+            )
+        return list(reversed(results))
+
+    rows = DailyAffiliationMetric.objects.filter(affiliation=selected_affiliation).order_by("-day")[:7]
+    results = []
+    for row in rows:
+        trends = row.top_trends or []
+        top_trend = trends[0] if trends else {}
+        results.append(
+            {
+                "day": str(row.day),
+                "term": top_trend.get("term", "N/A"),
+                "count": int(top_trend.get("count", 0) or 0),
+            }
+        )
+    return list(reversed(results))
+
+
+def _build_weekly_correlation_data(week_df: pd.DataFrame):
+    metrics = ["like_count", "retweet_count", "reply_count", "impression_count"]
+    correlation_data = []
+
+    global_corr = {"affiliation": "Global (7d)", "is_global": True}
+    for metric in metrics:
+        global_corr[metric] = _get_correlation(week_df, metric)
+    correlation_data.append(global_corr)
+
+    if not week_df.empty:
+        affs = sorted(week_df["affiliation"].dropna().astype(str).unique().tolist())
+        for aff in affs:
+            sub_df = week_df[week_df["affiliation"] == aff]
+            row = {"affiliation": aff, "is_global": False}
+            for metric in metrics:
+                row[metric] = _get_correlation(sub_df, metric)
+            correlation_data.append(row)
+
+    return correlation_data
+
+
+def _build_ai_overview_payload(post_qs, selected_affiliation: str):
+    if selected_affiliation and selected_affiliation != "ALL":
+        post_qs = post_qs.filter(affiliation=selected_affiliation)
+
+    week_cutoff = timezone.now() - timedelta(days=7)
+    week_df = pd.DataFrame(
+        post_qs.filter(created_at__gte=week_cutoff).values(
+            "day",
+            "sentiment_score",
+            "affiliation",
+            "like_count",
+            "retweet_count",
+            "reply_count",
+            "impression_count",
+            "text",
+        )
+    )
+
+    avg_sentiment_per_day = []
+    if not week_df.empty:
+        week_df["day"] = week_df["day"].astype(str)
+        avg_daily = week_df.groupby("day", as_index=False)["sentiment_score"].mean().sort_values("day")
+        avg_sentiment_per_day = [
+            {"day": row["day"], "avg_sentiment_score": round(float(row["sentiment_score"]), 6)}
+            for _, row in avg_daily.iterrows()
+        ]
+
+    week_texts = week_df.get("text", pd.Series(dtype=str)).dropna().astype(str).tolist()
+    global_trends_7d = extract_trends_from_texts(week_texts, top_n=10)
+    trends_by_affiliation = {}
+    if not week_df.empty:
+        for affiliation in sorted(week_df["affiliation"].dropna().astype(str).unique().tolist()):
+            texts = week_df[week_df["affiliation"] == affiliation]["text"].dropna().astype(str).tolist()
+            trends_by_affiliation[affiliation] = extract_trends_from_texts(texts, top_n=5)
+
+    weekly_correlation = _build_weekly_correlation_data(week_df)
+
+    return {
+        "generated_at": timezone.now().isoformat(),
+        "affiliation_filter": selected_affiliation,
+        "window": "last_7_days",
+        "reply_instructions": {
+            "endpoint": reverse("n8n_reply"),
+            "method": "POST",
+            "authorization_header": "Authorization: Bearer <N8N_REPLY_AUTH_TOKEN>",
+            "body_example": {"response": "Your AI overview summary here"},
+        },
+        "metrics": {
+            "average_sentiment_score_per_day": avg_sentiment_per_day,
+            "trends": {
+                "global": global_trends_7d,
+                "by_affiliation": trends_by_affiliation,
+            },
+            "sentiment_correlation_analysis": weekly_correlation,
+        },
+    }
+
+
+def home(request):
+    if request.user.is_authenticated:
+        return redirect("dashboard")
+    return redirect("login")
+
+
+def signup(request):
+    if request.user.is_authenticated:
+        return redirect("dashboard")
+
+    if request.method == "POST":
+        form = SignUpForm(request.POST)
+        if form.is_valid():
+            user = form.save()
+            login(request, user)
+            messages.success(request, "Account created successfully.")
+            return redirect("dashboard")
+    else:
+        form = SignUpForm()
+
+    return render(request, "dashboard/auth/signup.html", {"form": form})
+
+
+@login_required
+def dashboard_hub(request):
+    dashboards = UserDashboard.objects.filter(owner=request.user).order_by("-updated_at", "id")
+    form = UserDashboardForm()
+    return render(
+        request,
+        "dashboard/workspaces/index.html",
+        {
+            "dashboards": dashboards,
+            "form": form,
+        },
+    )
+
+
+@login_required
+@require_POST
+def create_user_dashboard(request):
+    form = UserDashboardForm(request.POST)
+    if not form.is_valid():
+        dashboards = UserDashboard.objects.filter(owner=request.user).order_by("-updated_at", "id")
+        return render(
+            request,
+            "dashboard/workspaces/index.html",
+            {
+                "dashboards": dashboards,
+                "form": form,
+            },
+            status=400,
+        )
+
+    user_dashboard = form.save(commit=False)
+    user_dashboard.owner = request.user
+    user_dashboard.save()
+    messages.success(request, "Dashboard workspace created.")
+    return redirect(f"{reverse('dashboard')}?workspace={user_dashboard.id}")
+
+
+@login_required
+def edit_user_dashboard(request, workspace_id: int):
+    workspace = UserDashboard.objects.filter(owner=request.user, id=workspace_id).first()
+    if not workspace:
+        messages.error(request, "Workspace not found.")
+        return redirect("dashboard_hub")
+
+    if request.method == "POST":
+        existing_api_key = workspace.x_api_key
+        form = UserDashboardForm(request.POST, instance=workspace)
+        if form.is_valid():
+            updated_workspace = form.save(commit=False)
+            if not (request.POST.get("x_api_key") or "").strip():
+                updated_workspace.x_api_key = existing_api_key
+            updated_workspace.owner = request.user
+            updated_workspace.save()
+            messages.success(request, f"Workspace '{updated_workspace.name}' updated.")
+            return redirect("dashboard_hub")
+    else:
+        form = UserDashboardForm(instance=workspace)
+
+    return render(
+        request,
+        "dashboard/workspaces/edit.html",
+        {
+            "form": form,
+            "workspace": workspace,
+        },
+    )
+
+
+@login_required
+@require_POST
+def sync_dashboard_posts(request, workspace_id: int):
+    workspace = UserDashboard.objects.filter(owner=request.user, id=workspace_id).first()
+    if not workspace:
+        messages.error(request, "Workspace not found.")
+        return redirect("dashboard_hub")
+
+    sync_result = sync_workspace_posts(
+        workspace,
+        window_days=workspace.fetch_window_days,
+        max_results_per_account=workspace.fetch_posts_per_account,
+    )
+    if not sync_result.get("ok"):
+        messages.error(request, sync_result.get("error", "Failed to sync posts from X."))
+        return redirect("dashboard_hub")
+
+    messages.success(
+        request,
+        (
+            f"Sync complete for '{workspace.name}'. Accounts processed: {sync_result['processed_accounts']}, "
+            f"accounts skipped: {sync_result['skipped_accounts']}, "
+            f"posts created: {sync_result['created_posts']}, posts updated: {sync_result['updated_posts']}."
+        ),
+    )
+    return redirect(f"{reverse('dashboard')}?workspace={workspace.id}")
+
+
+@login_required
+@require_POST
+def ai_overview(request):
+    selected_affiliation = request.POST.get("affiliation", "ALL")
+    workspace_id = request.POST.get("workspace", "")
+    webhook_url = os.getenv("N8N_WEBHOOK_URL", "").strip()
+
+    scoped_post_qs = Post.objects.filter(source_dashboard__isnull=True)
+    if workspace_id and workspace_id != "main":
+        workspace = UserDashboard.objects.filter(owner=request.user, id=workspace_id).first()
+        if workspace:
+            scoped_post_qs = Post.objects.filter(source_dashboard=workspace)
+
+    if not webhook_url:
+        messages.error(request, "N8N_WEBHOOK_URL is not configured.")
+        target = f"/?affiliation={selected_affiliation}"
+        if workspace_id:
+            target += f"&workspace={workspace_id}"
+        return redirect(target)
+
+    payload = _build_ai_overview_payload(scoped_post_qs, selected_affiliation)
+
+    try:
+        response = requests.post(webhook_url, json=payload, timeout=25)
+        response.raise_for_status()
+        messages.success(request, "AI Overview sent to n8n webhook.")
+    except requests.RequestException as exc:
+        messages.error(request, f"Failed to send AI Overview to n8n: {exc}")
+
+    target = f"/?affiliation={selected_affiliation}"
+    if workspace_id:
+        target += f"&workspace={workspace_id}"
+    return redirect(target)
+
+
+@csrf_exempt
+@require_POST
+def n8n_reply(request):
+    expected_auth = f"Bearer {N8N_REPLY_AUTH_TOKEN}"
+    provided_auth = request.headers.get("Authorization", "").strip()
+    if provided_auth != expected_auth:
+        return JsonResponse({"ok": False, "error": "Unauthorized"}, status=401)
+
+    try:
+        payload = json.loads(request.body.decode("utf-8") or "{}")
+    except json.JSONDecodeError:
+        payload = {"raw": request.body.decode("utf-8", errors="replace")}
+
+    normalized = {
+        "received_at": timezone.now().isoformat(),
+        "response": payload.get("response", payload),
+        "raw_payload": payload,
+    }
+    cache.set(N8N_REPLY_CACHE_KEY, normalized, N8N_REPLY_CACHE_TTL_SECONDS)
+
+    return JsonResponse({"ok": True})
+
+
+@login_required
 def dashboard(request):
-    dataframe = load_and_prepare_data()
-    affiliation_options = sorted(dataframe["spectrum"].dropna().astype(str).unique().tolist())
+    user_dashboards = UserDashboard.objects.filter(owner=request.user).order_by("-updated_at", "id")
+    workspace_items = [{"id": "main", "name": "Main", "is_main": True}]
+    workspace_items.extend(
+        [{"id": str(item.id), "name": item.name, "is_main": False} for item in user_dashboards]
+    )
+
+    requested_workspace = (request.GET.get("workspace") or "main").strip()
+    active_workspace = None
+    if requested_workspace != "main":
+        try:
+            active_workspace = user_dashboards.filter(id=int(requested_workspace)).first()
+        except ValueError:
+            active_workspace = None
+
+    if requested_workspace != "main" and not active_workspace:
+        requested_workspace = "main"
+
+    active_workspace_id = requested_workspace
+    active_workspace_name = active_workspace.name if active_workspace else "Main"
+
+    workspace_posts = Post.objects.filter(source_dashboard__isnull=True)
+    if active_workspace:
+        workspace_posts = Post.objects.filter(source_dashboard=active_workspace)
+
+    affiliation_options = sorted(workspace_posts.exclude(affiliation="").values_list("affiliation", flat=True).distinct())
     selected_affiliation = request.GET.get("affiliation", "ALL")
 
+    post_qs = workspace_posts
     if selected_affiliation and selected_affiliation != "ALL":
-        filtered_df = dataframe[dataframe["spectrum"] == selected_affiliation].copy()
-    else:
-        filtered_df = dataframe
+        post_qs = post_qs.filter(affiliation=selected_affiliation)
 
-    line_fig, bar_fig = _build_figures(filtered_df)
-    day_breakdown = _build_day_breakdown_payload(filtered_df)
+    dataframe = pd.DataFrame(
+        post_qs.values(
+            "day",
+            "sentiment_score",
+            "sentiment_label",
+            "affiliation",
+            "text",
+            "like_count",
+            "retweet_count",
+            "reply_count",
+            "impression_count",
+        )
+    )
+    if not dataframe.empty:
+        dataframe["day"] = dataframe["day"].astype(str)
 
-    # Weekly/Global Trends Calculation
-    global_trends = extract_trends(filtered_df, top_n=10)
-    
-    # Trends by affiliation for the entire period
+    week_cutoff = timezone.now() - timedelta(days=7)
+    week_df = pd.DataFrame(
+        post_qs.filter(created_at__gte=week_cutoff).values(
+            "day",
+            "sentiment_score",
+            "affiliation",
+            "like_count",
+            "retweet_count",
+            "reply_count",
+            "impression_count",
+            "text",
+            "sentiment_label",
+        )
+    )
+
+    bar_df = week_df[["affiliation", "sentiment_label"]].copy() if not week_df.empty else pd.DataFrame()
+
+    line_fig, bar_fig = _build_figures(dataframe, bar_df)
+
+    day_breakdown = {}
+    if not dataframe.empty:
+        grouped_days = dataframe.groupby("day", sort=True)
+        for day_value, day_frame in grouped_days:
+            day_texts = day_frame["text"].dropna().astype(str).tolist()
+            day_rows = []
+            sentiment_distribution = []
+
+            for affiliation in sorted(day_frame["affiliation"].dropna().astype(str).unique().tolist()):
+                sub = day_frame[day_frame["affiliation"] == affiliation]
+                aff_texts = sub["text"].dropna().astype(str).tolist()
+                day_rows.append(
+                    {
+                        "affiliation": affiliation,
+                        "post_count": int(len(sub)),
+                        "likes": int(sub["like_count"].fillna(0).sum()),
+                        "retweets": int(sub["retweet_count"].fillna(0).sum()),
+                        "replies": int(sub["reply_count"].fillna(0).sum()),
+                        "impressions": int(sub["impression_count"].fillna(0).sum()),
+                        "trends": extract_trends_from_texts(aff_texts, top_n=5),
+                    }
+                )
+
+                for label in ["negative", "neutral", "positive"]:
+                    label_count = int((sub["sentiment_label"] == label).sum())
+                    sentiment_distribution.append(
+                        {
+                            "spectrum": affiliation,
+                            "sentiment_label": label,
+                            "count": label_count,
+                        }
+                    )
+
+            day_breakdown[str(day_value)] = {
+                "rows": day_rows,
+                "total_posts": int(len(day_frame)),
+                "trends": extract_trends_from_texts(day_texts, top_n=8),
+                "sentiment_distribution": sentiment_distribution,
+            }
+
+    global_trends_7d = []
     trends_by_affiliation = {}
-    if not filtered_df.empty:
-        affs = filtered_df["spectrum"].unique()
-        for aff in affs:
-            if pd.isna(aff):
-                continue
-            aff_str = str(aff)
-            trends_by_affiliation[aff_str] = extract_trends(filtered_df[filtered_df["spectrum"] == aff], top_n=5)
+    daily_top_trends_7d = []
+    if not week_df.empty:
+        week_texts = week_df["text"].dropna().astype(str).tolist()
+        global_trends_7d = extract_trends_from_texts(week_texts, top_n=10)
+
+        for affiliation in sorted(week_df["affiliation"].dropna().astype(str).unique().tolist()):
+            aff_texts = week_df[week_df["affiliation"] == affiliation]["text"].dropna().astype(str).tolist()
+            trends_by_affiliation[affiliation] = extract_trends_from_texts(aff_texts, top_n=5)
+
+        for day_value, day_frame in week_df.groupby("day", sort=True):
+            top_trend = extract_trends_from_texts(day_frame["text"].dropna().astype(str).tolist(), top_n=1)
+            if top_trend:
+                daily_top_trends_7d.append(
+                    {
+                        "day": str(day_value),
+                        "term": top_trend[0]["term"],
+                        "count": int(top_trend[0]["count"]),
+                    }
+                )
+            else:
+                daily_top_trends_7d.append(
+                    {
+                        "day": str(day_value),
+                        "term": "N/A",
+                        "count": 0,
+                    }
+                )
+
+    # All-time top discussion topics from filtered post corpus
+    all_time_texts = dataframe.get("text", pd.Series(dtype=str)).dropna().astype(str).tolist()
+    # global_trends_all_time = extract_trends_from_texts(all_time_texts, top_n=10)
 
     # Calculate Correlations with Sentiment
     metrics = ["like_count", "retweet_count", "reply_count", "impression_count"]
@@ -220,20 +699,23 @@ def dashboard(request):
     # Global Correlation for current filtered view
     global_corr = {"affiliation": "Global (Filtered)", "is_global": True}
     for m in metrics:
-        global_corr[m] = _get_correlation(filtered_df, m)
+        global_corr[m] = _get_correlation(dataframe, m)
+        global_corr[f"{m}_7d"] = _get_correlation(week_df, m)
     correlation_data.append(global_corr)
     
     # Per Affiliation in current view
-    if not filtered_df.empty:
-        affs = sorted(filtered_df["spectrum"].unique())
+    if not dataframe.empty:
+        affs = sorted(dataframe["affiliation"].unique())
         for aff in affs:
             if pd.isna(aff):
                 continue
             aff_str = str(aff)
-            sub_df = filtered_df[filtered_df["spectrum"] == aff]
+            sub_df = dataframe[dataframe["affiliation"] == aff]
+            sub_week_df = week_df[week_df["affiliation"] == aff] if not week_df.empty else pd.DataFrame()
             row = {"affiliation": aff_str, "is_global": False}
             for m in metrics:
                 row[m] = _get_correlation(sub_df, m)
+                row[f"{m}_7d"] = _get_correlation(sub_week_df, m)
             correlation_data.append(row)
 
     context = {
@@ -242,8 +724,18 @@ def dashboard(request):
         "affiliation_options": affiliation_options,
         "selected_affiliation": selected_affiliation,
         "day_breakdown": day_breakdown,
-        "global_trends": global_trends,
+        "global_trends": global_trends_7d,
+        # "global_trends_all_time": global_trends_all_time,
+        "global_trends_7d": global_trends_7d,
+        "daily_top_trends_7d": daily_top_trends_7d,
         "trends_by_affiliation": trends_by_affiliation,
         "correlation_data": correlation_data,
+        "n8n_reply_data": cache.get(N8N_REPLY_CACHE_KEY),
+        "n8n_reply_auth_value": f"Bearer {N8N_REPLY_AUTH_TOKEN}",
+        "user_dashboards": user_dashboards,
+        "active_user_dashboard": active_workspace,
+        "workspace_items": workspace_items,
+        "active_workspace_id": active_workspace_id,
+        "active_workspace_name": active_workspace_name,
     }
     return render(request, "dashboard/index.html", context)

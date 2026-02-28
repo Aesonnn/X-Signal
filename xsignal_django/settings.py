@@ -1,7 +1,12 @@
+import os
 from pathlib import Path
+
+from django.core.exceptions import ImproperlyConfigured
+from dotenv import load_dotenv
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env")
 
 SECRET_KEY = "django-insecure-xsignal-dev-key"
 DEBUG = True
@@ -48,10 +53,43 @@ TEMPLATES = [
 WSGI_APPLICATION = "xsignal_django.wsgi.application"
 ASGI_APPLICATION = "xsignal_django.asgi.application"
 
+DB_ENGINE = os.getenv("DB_ENGINE", "").strip()
+DB_NAME = os.getenv("DB_NAME", "").strip()
+DB_USER = os.getenv("DB_USER", "").strip()
+DB_PASSWORD = os.getenv("DB_PASSWORD", "").strip()
+DB_HOST = os.getenv("DB_HOST", "").strip()
+DB_PORT = os.getenv("DB_PORT", "5432").strip()
+
+required_db_values = {
+    "DB_ENGINE": DB_ENGINE,
+    "DB_NAME": DB_NAME,
+    "DB_USER": DB_USER,
+    "DB_PASSWORD": DB_PASSWORD,
+    "DB_HOST": DB_HOST,
+    "DB_PORT": DB_PORT,
+}
+
+missing = [key for key, value in required_db_values.items() if not value]
+if missing:
+    raise ImproperlyConfigured(
+        f"Missing required database settings: {', '.join(missing)}. "
+        "Set them in environment variables or a .env file."
+    )
+
+if DB_ENGINE != "django.db.backends.postgresql":
+    raise ImproperlyConfigured("DB_ENGINE must be 'django.db.backends.postgresql' for Azure PostgreSQL.")
+
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+        "ENGINE": DB_ENGINE,
+        "NAME": DB_NAME,
+        "USER": DB_USER,
+        "PASSWORD": DB_PASSWORD,
+        "HOST": DB_HOST,
+        "PORT": DB_PORT,
+        "OPTIONS": {
+            "sslmode": os.getenv("DB_SSLMODE", "require"),
+        },
     }
 }
 
@@ -66,3 +104,12 @@ STATIC_URL = "/static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+LOGIN_URL = "/auth/login/"
+LOGIN_REDIRECT_URL = "/"
+LOGOUT_REDIRECT_URL = "/auth/login/"
+
+AUTHENTICATION_BACKENDS = [
+    "dashboard.auth_backends.EmailOrUsernameBackend",
+    "django.contrib.auth.backends.ModelBackend",
+]

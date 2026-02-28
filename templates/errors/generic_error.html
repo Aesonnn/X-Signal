@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{ status_code }} · X-Signal</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-full bg-[#050505] text-[#E7E9EA] font-sans">
+  <main class="min-h-screen flex items-center justify-center px-4">
+    <section class="w-full max-w-xl rounded-2xl border border-[#2F3336] bg-[#0b0b0b] p-8 text-center">
+      <div class="text-5xl font-bold text-white">{{ status_code }}</div>
+      <h1 class="mt-3 text-2xl font-semibold text-white">{{ title }}</h1>
+      <p class="mt-2 text-sm text-[#71767B]">{{ description }}</p>
+
+      <div class="mt-6 flex items-center justify-center gap-3">
+        <a href="/" class="rounded-md bg-[#1D9BF0] px-4 py-2 text-sm font-medium text-white">Go to Dashboard</a>
+        <a href="/auth/login/" class="rounded-md border border-[#2F3336] px-4 py-2 text-sm text-[#E7E9EA]">Login</a>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
