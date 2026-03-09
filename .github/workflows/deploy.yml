@@ -19,21 +19,21 @@ jobs:
       - name: Copy files to Azure VM
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: ${{ secrets.VM_HOST }}
-          username: ${{ secrets.VM_USER }}
-          key: ${{ secrets.VM_SSH_KEY }}
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
           source: "."
-          target: "/home/${{ secrets.VM_USER }}/X-Signal"
+          target: "/home/${{ secrets.SSH_USER }}/X-Signal"
           overwrite: true
 
       - name: Deploy on Azure VM
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.VM_HOST }}
-          username: ${{ secrets.VM_USER }}
-          key: ${{ secrets.VM_SSH_KEY }}
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd /home/${{ secrets.VM_USER }}/X-Signal
+            cd /home/${{ secrets.SSH_USER }}/X-Signal
             python3 -m venv .venv || true
             source .venv/bin/activate
             pip install -r requirements.txt
