@@ -18,7 +18,7 @@ class Command(BaseCommand):
         parser.add_argument(
             "--path",
             type=str,
-            default="recent_posts_from_ids.csv",
+            default="recent_posts_19-2102.csv",
             help="Path to CSV file with posts",
         )
 

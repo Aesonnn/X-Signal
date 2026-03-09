@@ -20,3 +20,10 @@ This project now uses a Django backend with a dedicated dashboard app.
 	- or `python app.py`
 
 Open: `http://localhost:8050/`
+
+
+
+sudo nano /etc/nginx/sites-available/xsignal
+
+sudo ln -sf /etc/nginx/sites-available/xsignal /etc/nginx/sites-enabled/
+sudo rm -f /etc/nginx/sites-enabled/default

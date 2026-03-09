@@ -7,7 +7,7 @@ import requests
 
 API_BASE = "https://api.x.com/2"
 IDS_CSV_PATH = "ids.csv"
-POSTS_PER_USER = 10
+POSTS_PER_USER = 5
 
 
 def _build_date_to_today_range() -> Dict[str, str]:
@@ -119,8 +119,8 @@ def main() -> None:
     print(f"Retrieved {len(df)} posts total from {len(targets)} users listed in {IDS_CSV_PATH}.")
     print(df)
 
-    df.to_csv("recent_posts_19-2102.csv", index=False)
-    print("Saved data to recent_posts_19-2102.csv")
+    df.to_csv("recent_posts_0803.csv", index=False)
+    print("Saved data to recent_posts_0803.csv")
 
 
 if __name__ == "__main__":
