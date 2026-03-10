@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import uuid
 from datetime import timedelta
 import pandas as pd
 import plotly.express as px
@@ -13,17 +14,20 @@ from sklearn.feature_extraction.text import CountVectorizer
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.core.cache import cache
+from django.db.models import DateTimeField
+from django.db.models.functions import Coalesce
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
+from django.utils.dateparse import parse_datetime
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_GET, require_POST
 
 from .models import (
     DailyAffiliationMetric,
     DailyGlobalMetric,
+    N8NReply,
     Post,
     Rolling7dAffiliationMetric,
     Rolling7dGlobalMetric,
@@ -34,13 +38,38 @@ from .repositories import get_day_click_payload
 from .x_api import sync_workspace_posts
 
 
-N8N_REPLY_CACHE_KEY_PREFIX = "n8n_reply"
-N8N_REPLY_CACHE_TTL_SECONDS = 60 * 60 * 24 * 7
 N8N_REPLY_AUTH_TOKEN = os.getenv("N8N_REPLY_AUTH_TOKEN", "xsignal-n8n-reply-2026")
 
 
-def _n8n_cache_key(workspace_id: str = "main") -> str:
-    return f"{N8N_REPLY_CACHE_KEY_PREFIX}:{workspace_id}"
+def _normalize_workspace_key(workspace_id: str | int | None) -> str:
+    raw = str(workspace_id or "main").strip()
+    return raw or "main"
+
+
+def _workspace_from_key(workspace_key: str):
+    if workspace_key == "main":
+        return None
+    try:
+        return UserDashboard.objects.filter(id=int(workspace_key)).first()
+    except ValueError:
+        return None
+
+
+def _get_latest_n8n_reply_data(workspace_key: str):
+    latest = (
+        N8NReply.objects.filter(workspace_key=workspace_key)
+        .annotate(latest_marker=Coalesce("requested_at", "received_at", output_field=DateTimeField()))
+        .order_by("-latest_marker", "-received_at", "-id")
+        .first()
+    )
+    if not latest:
+        return None
+    return {
+        "received_at": latest.received_at.isoformat(),
+        "response": latest.response,
+        "workspace": latest.workspace_key,
+        "request_id": latest.request_id,
+    }
 
 
 def extract_trends_from_texts(text_data: list[str], top_n: int = 5):
@@ -319,7 +348,7 @@ def _build_weekly_correlation_data(week_df: pd.DataFrame):
     return correlation_data
 
 
-def _build_ai_overview_payload(post_qs, selected_affiliation: str, workspace_id: str = "main"):
+def _build_ai_overview_payload(post_qs, selected_affiliation: str, workspace_id: str = "main", request_id: str = ""):
     if selected_affiliation and selected_affiliation != "ALL":
         post_qs = post_qs.filter(affiliation=selected_affiliation)
 
@@ -358,14 +387,20 @@ def _build_ai_overview_payload(post_qs, selected_affiliation: str, workspace_id:
 
     return {
         "generated_at": timezone.now().isoformat(),
+        "request_id": request_id,
         "affiliation_filter": selected_affiliation,
         "window": "last_7_days",
         "reply_instructions": {
             "endpoint": reverse("n8n_reply"),
             "method": "POST",
             "authorization_header": "Authorization: Bearer <N8N_REPLY_AUTH_TOKEN>",
-            "body_example": {"response": "Your AI overview summary here", "workspace": "<workspace_id>"},
-            "note": "Include the workspace value from this payload so the reply is stored for the correct workspace.",
+            "body_example": {
+                "response": "Your AI overview summary here",
+                "workspace": "<workspace_id>",
+                "request_id": "<request_id>",
+                "generated_at": "<generated_at>",
+            },
+            "note": "Include workspace and request_id from this payload so stale replies do not replace newer ones.",
         },
         "workspace": workspace_id,
         "metrics": {
@@ -502,7 +537,7 @@ def sync_dashboard_posts(request, workspace_id: int):
 @require_POST
 def ai_overview(request):
     selected_affiliation = request.POST.get("affiliation", "ALL")
-    workspace_id = request.POST.get("workspace", "")
+    workspace_id = _normalize_workspace_key(request.POST.get("workspace", ""))
     webhook_url = os.getenv("N8N_WEBHOOK_URL", "").strip()
 
     scoped_post_qs = Post.objects.filter(source_dashboard__isnull=True)
@@ -518,7 +553,13 @@ def ai_overview(request):
             target += f"&workspace={workspace_id}"
         return redirect(target)
 
-    payload = _build_ai_overview_payload(scoped_post_qs, selected_affiliation, workspace_id=workspace_id or "main")
+    request_id = uuid.uuid4().hex
+    payload = _build_ai_overview_payload(
+        scoped_post_qs,
+        selected_affiliation,
+        workspace_id=workspace_id or "main",
+        request_id=request_id,
+    )
 
     try:
         response = requests.post(webhook_url, json=payload, timeout=25)
@@ -546,16 +587,33 @@ def n8n_reply(request):
     except json.JSONDecodeError:
         payload = {"raw": request.body.decode("utf-8", errors="replace")}
 
-    reply_workspace = str(payload.get("workspace", "main") or "main")
-    normalized = {
-        "received_at": timezone.now().isoformat(),
-        "response": payload.get("response", payload),
-        "workspace": reply_workspace,
-        "raw_payload": payload,
-    }
-    cache.set(_n8n_cache_key(reply_workspace), normalized, N8N_REPLY_CACHE_TTL_SECONDS)
+    reply_workspace = _normalize_workspace_key(payload.get("workspace", "main"))
+    generated_at_raw = payload.get("generated_at") or payload.get("requested_at")
+    generated_at = parse_datetime(str(generated_at_raw)) if generated_at_raw else None
+
+    N8NReply.objects.create(
+        source_dashboard=_workspace_from_key(reply_workspace),
+        workspace_key=reply_workspace,
+        request_id=str(payload.get("request_id", "") or "").strip(),
+        requested_at=generated_at,
+        response=payload.get("response", payload),
+        raw_payload=payload,
+    )
 
     return JsonResponse({"ok": True})
+
+
+@login_required
+@require_GET
+def latest_n8n_reply(request):
+    workspace_key = _normalize_workspace_key(request.GET.get("workspace") or "main")
+    if workspace_key != "main":
+        workspace = UserDashboard.objects.filter(owner=request.user, id=workspace_key).first()
+        if not workspace:
+            return JsonResponse({"ok": False, "error": "Workspace not found"}, status=404)
+
+    data = _get_latest_n8n_reply_data(workspace_key)
+    return JsonResponse({"ok": True, "data": data})
 
 
 @login_required
@@ -566,7 +624,7 @@ def dashboard(request):
         [{"id": str(item.id), "name": item.name, "is_main": False} for item in user_dashboards]
     )
 
-    requested_workspace = (request.GET.get("workspace") or "main").strip()
+    requested_workspace = _normalize_workspace_key(request.GET.get("workspace") or "main")
     active_workspace = None
     if requested_workspace != "main":
         try:
@@ -738,7 +796,7 @@ def dashboard(request):
         "daily_top_trends_7d": daily_top_trends_7d,
         "trends_by_affiliation": trends_by_affiliation,
         "correlation_data": correlation_data,
-        "n8n_reply_data": cache.get(_n8n_cache_key(active_workspace_id)),
+        "n8n_reply_data": _get_latest_n8n_reply_data(active_workspace_id),
         "n8n_reply_auth_value": f"Bearer {N8N_REPLY_AUTH_TOKEN}",
         "user_dashboards": user_dashboards,
         "active_user_dashboard": active_workspace,

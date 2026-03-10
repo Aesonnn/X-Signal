@@ -159,20 +159,9 @@
 
           <div class="mb-6 rounded-xl border border-xline bg-xbg p-4">
             <h3 class="text-sm font-medium text-xmuted mb-2">Latest AI Reply (n8n)</h3>
-            {% if n8n_reply_data %}
-              <div class="text-xs text-xmuted mb-2">Received: {{ n8n_reply_data.received_at }}</div>
-              <div id="n8n-reply-content" class="rounded-md border border-xline bg-xpanel p-3 text-sm text-xtext prose prose-invert prose-sm max-w-none"></div>
-              {{ n8n_reply_data.response|json_script:"n8n-reply-raw" }}
-              <script>
-                (function() {
-                  var raw = JSON.parse(document.getElementById('n8n-reply-raw').textContent);
-                  var text = typeof raw === 'string' ? raw : JSON.stringify(raw, null, 2);
-                  document.getElementById('n8n-reply-content').innerHTML = marked.parse(text);
-                })();
-              </script>
-            {% else %}
-              <div class="text-sm text-xmuted">No reply received yet.</div>
-            {% endif %}
+            <div id="n8n-reply-received-at" class="text-xs text-xmuted mb-2"></div>
+            <div id="n8n-reply-empty" class="text-sm text-xmuted hidden">No reply received yet.</div>
+            <div id="n8n-reply-content" class="rounded-md border border-xline bg-xpanel p-3 text-sm text-xtext prose prose-invert prose-sm max-w-none hidden"></div>
           </div>
 
           <h3 class="text-sm font-medium text-xmuted mb-3">Trends by Affiliation</h3>
@@ -252,6 +241,7 @@
   </main>
 
   {{ day_breakdown|json_script:"day-breakdown-data" }}
+  {{ n8n_reply_data|default_if_none:'null'|json_script:"n8n-reply-initial" }}
   <script>
     document.addEventListener("DOMContentLoaded", function () {
       // AI Overview loading indicator
@@ -275,6 +265,64 @@
       // We will grab it once Plotly initializes the bar chart div
       let originalBarData = null;
       let originalBarLayout = null;
+      let latestReplyMarker = "";
+
+      function renderN8NReply(replyData) {
+        var receivedAtNode = document.getElementById("n8n-reply-received-at");
+        var emptyNode = document.getElementById("n8n-reply-empty");
+        var contentNode = document.getElementById("n8n-reply-content");
+        if (!receivedAtNode || !emptyNode || !contentNode) {
+          return;
+        }
+
+        if (!replyData) {
+          receivedAtNode.textContent = "";
+          emptyNode.classList.remove("hidden");
+          contentNode.classList.add("hidden");
+          contentNode.innerHTML = "";
+          latestReplyMarker = "";
+          return;
+        }
+
+        var response = replyData.response;
+        var renderedText = typeof response === "string" ? response : JSON.stringify(response, null, 2);
+        var receivedAt = replyData.received_at || "";
+        receivedAtNode.textContent = receivedAt ? ("Received: " + receivedAt) : "Received";
+        contentNode.innerHTML = marked.parse(renderedText);
+        emptyNode.classList.add("hidden");
+        contentNode.classList.remove("hidden");
+        latestReplyMarker = [replyData.request_id || "", replyData.received_at || ""].join("|");
+      }
+
+      function pollLatestN8NReply() {
+        var workspaceId = "{{ active_workspace_id|escapejs }}";
+        var url = "{% url 'latest_n8n_reply' %}?workspace=" + encodeURIComponent(workspaceId);
+
+        fetch(url, {
+          method: "GET",
+          credentials: "same-origin",
+          headers: {"X-Requested-With": "XMLHttpRequest"}
+        })
+          .then(function (res) {
+            if (!res.ok) {
+              return null;
+            }
+            return res.json();
+          })
+          .then(function (payload) {
+            if (!payload || !payload.ok) {
+              return;
+            }
+            var replyData = payload.data;
+            var marker = replyData ? [replyData.request_id || "", replyData.received_at || ""].join("|") : "";
+            if (marker !== latestReplyMarker) {
+              renderN8NReply(replyData);
+            }
+          })
+          .catch(function () {
+            // Ignore transient polling errors to avoid disrupting UX.
+          });
+      }
 
       function bindHoverInfo() {
         const lineChartRoot = document.getElementById("daily-line-chart");
@@ -446,6 +494,18 @@
           
           Plotly.react(chartDiv, traces, newLayout);
       }
+
+      var initialReplyNode = document.getElementById("n8n-reply-initial");
+      var initialReplyData = null;
+      if (initialReplyNode) {
+        try {
+          initialReplyData = JSON.parse(initialReplyNode.textContent);
+        } catch (e) {
+          initialReplyData = null;
+        }
+      }
+      renderN8NReply(initialReplyData);
+      setInterval(pollLatestN8NReply, 5000);
       
       bindHoverInfo();
     });

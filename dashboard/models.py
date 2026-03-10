@@ -192,3 +192,26 @@ class UserDashboard(models.Model):
         indexes = [
             models.Index(fields=["owner", "updated_at"], name="idx_user_dash_owner_updated"),
         ]
+
+
+class N8NReply(models.Model):
+    source_dashboard = models.ForeignKey(
+        "UserDashboard",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="n8n_replies",
+    )
+    workspace_key = models.CharField(max_length=32, db_index=True, default="main")
+    request_id = models.CharField(max_length=64, blank=True, db_index=True)
+    requested_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    received_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    response = models.JSONField(default=dict, blank=True)
+    raw_payload = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        db_table = "n8n_replies"
+        indexes = [
+            models.Index(fields=["workspace_key", "received_at"], name="idx_n8n_reply_ws_received"),
+            models.Index(fields=["workspace_key", "requested_at"], name="idx_n8n_reply_ws_requested"),
+        ]
