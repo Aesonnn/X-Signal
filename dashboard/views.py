@@ -428,7 +428,7 @@ def signup(request):
         form = SignUpForm(request.POST)
         if form.is_valid():
             user = form.save()
-            login(request, user)
+            login(request, user, backend="django.contrib.auth.backends.ModelBackend")
             messages.success(request, "Account created successfully.")
             return redirect("dashboard")
     else:
@@ -513,11 +513,16 @@ def sync_dashboard_posts(request, workspace_id: int):
         messages.error(request, "Workspace not found.")
         return redirect("dashboard_hub")
 
-    sync_result = sync_workspace_posts(
-        workspace,
-        window_days=workspace.fetch_window_days,
-        max_results_per_account=workspace.fetch_posts_per_account,
-    )
+    try:
+        sync_result = sync_workspace_posts(
+            workspace,
+            window_days=workspace.fetch_window_days,
+            max_results_per_account=workspace.fetch_posts_per_account,
+        )
+    except Exception as exc:
+        messages.error(request, f"Failed to sync posts: {exc}")
+        return redirect("dashboard_hub")
+
     if not sync_result.get("ok"):
         messages.error(request, sync_result.get("error", "Failed to sync posts from X."))
         return redirect("dashboard_hub")

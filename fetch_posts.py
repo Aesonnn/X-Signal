@@ -7,14 +7,14 @@ import requests
 
 API_BASE = "https://api.x.com/2"
 IDS_CSV_PATH = "ids.csv"
-POSTS_PER_USER = 5
+POSTS_PER_USER = 15
 
 
 def _build_date_to_today_range() -> Dict[str, str]:
     now_utc = datetime.now(timezone.utc)
-    start_utc = datetime(now_utc.year, 2, 19, 0, 0, 0, tzinfo=timezone.utc)
+    start_utc = datetime(now_utc.year, 3, 9, 0, 0, 0, tzinfo=timezone.utc)
     if now_utc < start_utc:
-        start_utc = datetime(now_utc.year - 1, 2, 19, 0, 0, 0, tzinfo=timezone.utc)
+        start_utc = datetime(now_utc.year - 1, 3, 9, 0, 0, 0, tzinfo=timezone.utc)
 
     return {
         "start_time": start_utc.strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -119,8 +119,8 @@ def main() -> None:
     print(f"Retrieved {len(df)} posts total from {len(targets)} users listed in {IDS_CSV_PATH}.")
     print(df)
 
-    df.to_csv("recent_posts_0803.csv", index=False)
-    print("Saved data to recent_posts_0803.csv")
+    df.to_csv("recent_posts_1203.csv", index=False)
+    print("Saved data to recent_posts_1203.csv")
 
 
 if __name__ == "__main__":

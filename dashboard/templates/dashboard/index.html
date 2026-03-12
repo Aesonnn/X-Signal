@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>X-Signal Dashboard (Django)</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+  <script src="https://cdn.plot.ly/plotly-3.4.0.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script>
     tailwind.config = {
@@ -331,11 +331,19 @@
         const breakdown = document.getElementById("daily-click-breakdown");
         const resetBtn = document.getElementById("reset-bar-chart");
         const payloadNode = document.getElementById("day-breakdown-data");
-        const breakdownData = payloadNode ? JSON.parse(payloadNode.textContent) : {};
+        let breakdownData = {};
+        if (payloadNode) {
+          try {
+            breakdownData = JSON.parse(payloadNode.textContent || "{}");
+          } catch (error) {
+            console.warn("Failed to parse day breakdown payload:", error);
+            breakdownData = {};
+          }
+        }
 
         // Wait until Plotly attaches the .on method
         // Sometimes chartRoot is present but .on is not yet there (Plotly initializing)
-        if (!lineChartRoot || typeof lineChartRoot.on !== "function" || !barChartRoot || !barChartRoot.data) {
+        if (!lineChartRoot || typeof lineChartRoot.on !== "function") {
           if (retries < MAX_RETRIES) {
             retries++;
             // Check again shortly
@@ -347,7 +355,7 @@
         }
 
         // Capture original state on first load
-        if (!originalBarData) {
+        if (!originalBarData && barChartRoot && barChartRoot.data) {
             originalBarData = JSON.parse(JSON.stringify(barChartRoot.data));
             originalBarLayout = JSON.parse(JSON.stringify(barChartRoot.layout));
         }
@@ -417,7 +425,7 @@
           const dayInfo = breakdownData[matchedDayKey];
           
           // Update Bar Chart for this day
-          if (dayInfo.sentiment_distribution && barChartRoot) {
+            if (dayInfo.sentiment_distribution && barChartRoot && typeof Plotly !== "undefined") {
               updateBarChartForDay(barChartRoot, dayInfo.sentiment_distribution, matchedDayKey);
               if (resetBtn) resetBtn.classList.remove("hidden");
           }
@@ -459,6 +467,10 @@
       };
       
       function updateBarChartForDay(chartDiv, distribution, dayLabel) {
+          if (!chartDiv || !Array.isArray(distribution) || typeof Plotly === "undefined") {
+            return;
+          }
+
           // distribution: [{spectrum, sentiment_label, count}, ...]
           // We need to map this to traces: "positive", "neutral", "negative"
           const sentimentOrder = ["negative", "neutral", "positive"];
@@ -490,13 +502,13 @@
           });
           
           const newLayout = JSON.parse(JSON.stringify(originalBarLayout || {}));
-          {% comment %} newLayout.title = { text: `Sentiment Distribution for ${dayLabel}`, font: { color: "#E7E9EA" } }; {% endcomment %}
+            // newLayout.title = { text: `Sentiment Distribution for ${dayLabel}`, font: { color: "#E7E9EA" } };
           
           Plotly.react(chartDiv, traces, newLayout);
       }
 
       var initialReplyNode = document.getElementById("n8n-reply-initial");
-      var initialReplyData = null;
+        // newLayout.title = { text: `Sentiment Distribution for ${dayLabel}`, font: { color: "#E7E9EA" } };
       if (initialReplyNode) {
         try {
           initialReplyData = JSON.parse(initialReplyNode.textContent);
