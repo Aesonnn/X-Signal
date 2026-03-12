@@ -288,7 +288,11 @@
         var renderedText = typeof response === "string" ? response : JSON.stringify(response, null, 2);
         var receivedAt = replyData.received_at || "";
         receivedAtNode.textContent = receivedAt ? ("Received: " + receivedAt) : "Received";
-        contentNode.innerHTML = marked.parse(renderedText);
+        if (typeof marked !== "undefined" && marked && typeof marked.parse === "function") {
+          contentNode.innerHTML = marked.parse(renderedText);
+        } else {
+          contentNode.textContent = renderedText;
+        }
         emptyNode.classList.add("hidden");
         contentNode.classList.remove("hidden");
         latestReplyMarker = [replyData.request_id || "", replyData.received_at || ""].join("|");
@@ -508,7 +512,7 @@
       }
 
       var initialReplyNode = document.getElementById("n8n-reply-initial");
-        // newLayout.title = { text: `Sentiment Distribution for ${dayLabel}`, font: { color: "#E7E9EA" } };
+      var initialReplyData = null;
       if (initialReplyNode) {
         try {
           initialReplyData = JSON.parse(initialReplyNode.textContent);
@@ -516,7 +520,11 @@
           initialReplyData = null;
         }
       }
-      renderN8NReply(initialReplyData);
+      try {
+        renderN8NReply(initialReplyData);
+      } catch (error) {
+        console.warn("Failed to render initial n8n reply:", error);
+      }
       setInterval(pollLatestN8NReply, 5000);
       
       bindHoverInfo();
