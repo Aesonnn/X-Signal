@@ -1,8 +1,8 @@
 TODO: 
-      - Create dashboards that analyse their selected X accounts by using their API keys
-            Check (seems to work) but check more thoroughly
-      - Update the page autoamatically when new data is received from n8n (e.g. using WebSockets or polling)
-      - Host on Azure and create a domain for it (e.g. xsignal.ai) to share with others. This will also enable n8n to send HTTP request with the answer from Grok after Overview is triggered.
+      - Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads. Consider downloadin a model: https://huggingface.co/cardiffnlp/twitter-roberta-base-sentiment-latest/tree/main
+      - Check RoBERTa on VM, it has no GPU
+      - Add dashboard deletion
+      - Batching to ingest posts quicker
 
 Extra:
       - Use n8n to fetch images for latest trending topics and show in dashboard

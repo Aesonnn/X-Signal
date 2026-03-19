@@ -9,7 +9,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import requests
-from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.feature_extraction.text import CountVectorizer, ENGLISH_STOP_WORDS, TfidfTransformer
 
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
@@ -71,22 +71,62 @@ def _get_latest_n8n_reply_data(workspace_key: str):
         "request_id": latest.request_id,
     }
 
-
+# Filters irrelevant words and common stop words on X
 def extract_trends_from_texts(text_data: list[str], top_n: int = 5):
     if not text_data:
         return []
 
-    # Remove URLs
     url_pattern = re.compile(r"https?://\S+|www\.\S+")
-    clean_text = [url_pattern.sub("", t) for t in text_data]
+    mention_pattern = re.compile(r"@\w+")
+
+    custom_stop_words = {
+        "rt",
+        "amp",
+        "https",
+        "http",
+        "co",
+        "tco",
+    }
+    stop_words = ENGLISH_STOP_WORDS.union(custom_stop_words)
+
+    clean_text: list[str] = []
+    for text in text_data:
+        value = str(text or "")
+        value = url_pattern.sub(" ", value)
+        value = mention_pattern.sub(" ", value)
+        value = value.replace("&amp;", " and ")
+        value = value.replace("#", " ")
+        value = re.sub(r"[^A-Za-z\s]", " ", value)
+        value = re.sub(r"\s+", " ", value).strip().lower()
+        if value:
+            clean_text.append(value)
+
+    if not clean_text:
+        return []
 
     try:
-        vec = CountVectorizer(stop_words="english", ngram_range=(1, 2), min_df=1, max_df=1.0)
+        min_df = 2 if len(clean_text) >= 20 else 1
+        max_df = 0.85 if len(clean_text) >= 20 else 1.0
+
+        vec = CountVectorizer(
+            stop_words=list(stop_words),
+            ngram_range=(1, 2),
+            min_df=min_df,
+            max_df=max_df,
+            token_pattern=r"(?u)\b[a-zA-Z][a-zA-Z]+\b",
+        )
         X = vec.fit_transform(clean_text)
         counts = X.sum(axis=0).A1
         terms = vec.get_feature_names_out()
 
-        sorted_indices = counts.argsort()[::-1][:top_n]
+        if len(clean_text) >= 20:
+            tfidf = TfidfTransformer(norm=None, use_idf=True, smooth_idf=True, sublinear_tf=True)
+            tfidf.fit(X)
+            ranking_scores = counts * tfidf.idf_
+        else:
+            ranking_scores = counts
+
+        sorted_indices = ranking_scores.argsort()[::-1][:top_n]
         top_terms = [{"term": terms[i], "count": int(counts[i])} for i in sorted_indices]
         return top_terms
     except ValueError:

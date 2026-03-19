@@ -6,13 +6,13 @@ from pathlib import Path
 import pandas as pd
 from django.core.management.base import BaseCommand
 from django.db import transaction
-from nltk.sentiment import SentimentIntensityAnalyzer
 
 from dashboard.models import Post
+from dashboard.sentiment import RobertaSentimentScorer
 
 
 class Command(BaseCommand):
-    help = "Load posts from CSV into Post table (upsert by x_post_id)."
+    help = "Load posts from CSV into Post table (upsert by x_post_id) with RoBERTa sentiment."
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -33,7 +33,7 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING("CSV is empty. Nothing to ingest."))
             return
 
-        sentiment = SentimentIntensityAnalyzer()
+        sentiment = RobertaSentimentScorer()
         processed = 0
 
         with transaction.atomic():
@@ -58,13 +58,7 @@ class Command(BaseCommand):
                     except (ValueError, SyntaxError):
                         metrics = {}
 
-                sentiment_score = float(sentiment.polarity_scores(text)["compound"])
-                if sentiment_score <= -0.2:
-                    sentiment_label = "negative"
-                elif sentiment_score >= 0.2:
-                    sentiment_label = "positive"
-                else:
-                    sentiment_label = "neutral"
+                sentiment_score, sentiment_label = sentiment.score(text)
 
                 Post.objects.update_or_create(
                     source_dashboard=None,

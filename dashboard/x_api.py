@@ -6,9 +6,9 @@ from typing import Any
 
 import pandas as pd
 import requests
-from nltk.sentiment import SentimentIntensityAnalyzer
 
 from .models import Post, UserDashboard
+from .sentiment import RobertaSentimentScorer
 
 
 API_BASE = "https://api.x.com/2"
@@ -107,7 +107,7 @@ def sync_workspace_posts(
 
     headers = {"Authorization": f"Bearer {api_key}"}
     start_time, end_time = _build_time_window(window_days)
-    sentiment = SentimentIntensityAnalyzer()
+    sentiment = RobertaSentimentScorer()
 
     processed_accounts = 0
     skipped_accounts = 0
@@ -137,13 +137,7 @@ def sync_workspace_posts(
             if not isinstance(public_metrics, dict):
                 public_metrics = {}
 
-            sentiment_score = float(sentiment.polarity_scores(text)["compound"])
-            if sentiment_score <= -0.2:
-                sentiment_label = "negative"
-            elif sentiment_score >= 0.2:
-                sentiment_label = "positive"
-            else:
-                sentiment_label = "neutral"
+            sentiment_score, sentiment_label = sentiment.score(text)
 
             _, created = Post.objects.update_or_create(
                 source_dashboard=workspace,
