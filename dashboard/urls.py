@@ -2,6 +2,7 @@ from django.contrib.auth.views import LoginView, LogoutView
 from django.urls import path
 
 from .views import (
+    admin_console,
     ai_overview,
     create_user_dashboard,
     dashboard,
@@ -25,6 +26,7 @@ urlpatterns = [
     path("workspaces/<int:workspace_id>/edit/", edit_user_dashboard, name="edit_user_dashboard"),
     path("workspaces/<int:workspace_id>/sync/", sync_dashboard_posts, name="sync_dashboard_posts"),
     path("", dashboard, name="dashboard"),
+    path("admin-console/", admin_console, name="admin_console"),
     path("ai-overview/", ai_overview, name="ai_overview"),
     path("n8n/reply/", n8n_reply, name="n8n_reply"),
     path("n8n/reply/latest/", latest_n8n_reply, name="latest_n8n_reply"),

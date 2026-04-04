@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>X-Signal Dashboard (Django)</title>
+  <title>X-Signal Dashboard</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.plot.ly/plotly-3.4.0.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -27,7 +27,7 @@
 </head>
 <body class="min-h-full bg-xbg text-xtext font-sans">
   <aside class="fixed inset-y-0 left-0 w-60 border-r border-xline bg-xbg/95 px-4 py-6 overflow-y-auto">
-    <div class="mb-4 text-xs uppercase tracking-wide text-xmuted">Workspaces</div>
+    <div class="mb-4 text-xs uppercase tracking-wide text-xmuted">Dashboards</div>
     <nav class="space-y-2">
       {% for workspace in workspace_items %}
         <a
@@ -44,7 +44,10 @@
     <div class="px-4 md:px-6 py-4 flex items-center justify-between">
       <div class="text-xl font-semibold tracking-tight text-white">X-Signal</div>
       <div class="flex items-center gap-4 text-sm text-xmuted">
-        <a href="{% url 'dashboard_hub' %}" class="hover:text-xtext transition-colors">Manage Workspaces</a>
+        <a href="{% url 'dashboard_hub' %}" class="hover:text-xtext transition-colors">Manage Dashboards</a>
+        {% if can_access_admin_console %}
+          <a href="{% url 'admin_console' %}" class="hover:text-xtext transition-colors">Admin Console</a>
+        {% endif %}
         <form method="post" action="{% url 'logout' %}">
           {% csrf_token %}
           <button type="submit" class="hover:text-xtext transition-colors">Logout</button>
@@ -57,7 +60,7 @@
     {% if messages %}
       <section class="space-y-2">
         {% for message in messages %}
-          <div class="rounded-lg border border-xline bg-xpanel px-4 py-3 text-sm {% if message.tags == 'error' %}text-red-300{% elif message.tags == 'success' %}text-green-300{% else %}text-xtext{% endif %}">
+          <div class="rounded-lg border px-4 py-3 text-sm {% if 'error' in message.tags %}border-red-500/60 bg-red-500/10 text-red-300{% elif 'success' in message.tags %}border-green-500/60 bg-green-500/10 text-green-300{% else %}border-xline bg-xpanel text-xtext{% endif %}">
             {{ message }}
           </div>
         {% endfor %}
@@ -69,7 +72,7 @@
     <section class="rounded-2xl border-2 border-xline bg-xpanel p-6 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
       <div>
         <h1 class="text-2xl md:text-3xl font-bold tracking-tight text-white">Sentiment Dashboard · {{ active_workspace_name }}</h1>
-        <p class="mt-1 text-xmuted text-sm">Django backend with daily trend and affiliation sentiment distribution.</p>
+        <p class="mt-1 text-xmuted text-sm">Daily trend and affiliation sentiment distribution.</p>
       </div>
       <div class="w-full md:w-auto md:min-w-[250px] space-y-3">
         <form method="get">

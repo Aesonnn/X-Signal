@@ -17,7 +17,7 @@ from dashboard.models import (
 
 
 class Command(BaseCommand):
-    help = "Rebuild daily and rolling-7-day aggregate metric tables from Post data."
+    help = "Rebuild daily and rolling-7-day aggregate metric tables from Main Post data."
 
     def _extract_trends(self, qs, top_n: int = 5):
         texts = [text for text in qs.values_list("text", flat=True) if text]
@@ -39,9 +39,10 @@ class Command(BaseCommand):
             return []
 
     def handle(self, *args, **options):
-        all_days = list(Post.objects.order_by("day").values_list("day", flat=True).distinct())
+        main_posts = Post.objects.filter(source_dashboard__isnull=True)
+        all_days = list(main_posts.order_by("day").values_list("day", flat=True).distinct())
         if not all_days:
-            self.stdout.write(self.style.WARNING("No posts found. Nothing to aggregate."))
+            self.stdout.write(self.style.WARNING("No Main posts found. Nothing to aggregate."))
             return
 
         DailyGlobalMetric.objects.all().delete()
@@ -50,7 +51,7 @@ class Command(BaseCommand):
         Rolling7dAffiliationMetric.objects.all().delete()
 
         for day in all_days:
-            day_qs = Post.objects.filter(day=day)
+            day_qs = main_posts.filter(day=day)
 
             daily_global = day_qs.aggregate(
                 posts_count=Count("id"),
@@ -113,7 +114,7 @@ class Command(BaseCommand):
                 )
 
             start_day = day - timedelta(days=6)
-            week_qs = Post.objects.filter(day__gte=start_day, day__lte=day)
+            week_qs = main_posts.filter(day__gte=start_day, day__lte=day)
             week_global = week_qs.aggregate(
                 posts_count=Count("id"),
                 avg_sentiment=Avg("sentiment_score"),

@@ -32,6 +32,7 @@ from .models import (
     Rolling7dAffiliationMetric,
     Rolling7dGlobalMetric,
     UserDashboard,
+    UserProfile,
 )
 from .forms import SignUpForm, UserDashboardForm
 from .repositories import get_day_click_payload
@@ -39,6 +40,17 @@ from .x_api import sync_workspace_posts
 
 
 N8N_REPLY_AUTH_TOKEN = os.getenv("N8N_REPLY_AUTH_TOKEN", "xsignal-n8n-reply-2026")
+
+
+def _get_or_create_user_profile(user):
+    default_role = UserProfile.ROLE_ADMIN if (user.is_superuser or user.is_staff or user.username == "admin") else UserProfile.ROLE_USER
+    profile, _ = UserProfile.objects.get_or_create(user=user, defaults={"role": default_role})
+    return profile
+
+
+def _is_admin_user(user) -> bool:
+    profile = _get_or_create_user_profile(user)
+    return profile.role == UserProfile.ROLE_ADMIN
 
 
 def _normalize_workspace_key(workspace_id: str | int | None) -> str:
@@ -468,6 +480,7 @@ def signup(request):
         form = SignUpForm(request.POST)
         if form.is_valid():
             user = form.save()
+            _get_or_create_user_profile(user)
             login(request, user, backend="django.contrib.auth.backends.ModelBackend")
             messages.success(request, "Account created successfully.")
             return redirect("dashboard")
@@ -487,6 +500,22 @@ def dashboard_hub(request):
         {
             "dashboards": dashboards,
             "form": form,
+            "can_access_admin_console": _is_admin_user(request.user)
+        },
+    )
+
+
+@login_required
+def admin_console(request):
+    if not _is_admin_user(request.user):
+        messages.error(request, "You do not have access to Admin Console.")
+        return redirect("dashboard")
+
+    return render(
+        request,
+        "dashboard/admin_console.html",
+        {
+            "can_access_admin_console": True,
         },
     )
 
@@ -848,5 +877,6 @@ def dashboard(request):
         "workspace_items": workspace_items,
         "active_workspace_id": active_workspace_id,
         "active_workspace_name": active_workspace_name,
+        "can_access_admin_console": _is_admin_user(request.user),
     }
     return render(request, "dashboard/index.html", context)

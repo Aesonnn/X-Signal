@@ -41,53 +41,46 @@ def _parse_accounts_with_affiliation(raw_accounts: str) -> list[tuple[str, str]]
 
 def _build_time_window(days: int) -> tuple[str, str]:
     now_utc = datetime.now(timezone.utc)
-    start_utc = now_utc - timedelta(days=max(1, days))
+    # recent search requires end_time to be slightly in the past.
+    end_utc = now_utc - timedelta(minutes=1)
+    start_utc = end_utc - timedelta(days=max(1, days))
+    # recent search supports up to ~7 days of history.
+    min_supported_start = end_utc - timedelta(days=7)
+    if start_utc < min_supported_start:
+        start_utc = min_supported_start
     return (
         start_utc.strftime("%Y-%m-%dT%H:%M:%SZ"),
-        now_utc.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        end_utc.strftime("%Y-%m-%dT%H:%M:%SZ"),
     )
 
 
-def _resolve_account_to_user_id(account: str, headers: dict[str, str]) -> tuple[str | None, str]:
-    if account.isdigit():
-        return account, account
-
-    response = requests.get(f"{API_BASE}/users/by/username/{account}", headers=headers, timeout=20)
-    if response.status_code >= 400:
-        return None, account
-
-    payload = response.json()
-    user_data = payload.get("data") or {}
-    user_id = user_data.get("id")
-    username = user_data.get("username") or account
-    if not user_id:
-        return None, account
-    return str(user_id), str(username)
+def _build_author_query(username: str) -> str:
+    normalized = username.lstrip("@").strip()
+    return f"from:{normalized} -is:reply -is:retweet"
 
 
 def _fetch_user_posts(
-    user_id: str,
+    username: str,
     headers: dict[str, str],
     start_time: str,
     end_time: str,
     max_results: int,
 ) -> list[dict[str, Any]]:
-    safe_max_results = max(5, min(100, max_results))
+    safe_max_results = max(10, min(100, max_results))
     params = {
+        "query": _build_author_query(username),
         "max_results": safe_max_results,
-        "exclude": "replies,retweets",
         "tweet.fields": "id,text,author_id,public_metrics,created_at",
         "start_time": start_time,
         "end_time": end_time,
     }
     response = requests.get(
-        f"{API_BASE}/users/{user_id}/tweets",
+        f"{API_BASE}/tweets/search/recent",
         headers=headers,
         params=params,
         timeout=25,
     )
-    if response.status_code >= 400:
-        return []
+    response.raise_for_status()
     payload = response.json()
     return payload.get("data", [])
 
@@ -115,13 +108,16 @@ def sync_workspace_posts(
     updated_posts = 0
 
     for account, canonical_affiliation in accounts:
-        user_id, account_label = _resolve_account_to_user_id(account, headers)
-        if not user_id:
+        account_label = account
+        processed_accounts += 1
+        try:
+            posts = _fetch_user_posts(account, headers, start_time, end_time, max_results_per_account)
+        except requests.RequestException:
+            return {"ok": False, "error": "Check your API key and balance"}
+
+        if not posts:
             skipped_accounts += 1
             continue
-
-        processed_accounts += 1
-        posts = _fetch_user_posts(user_id, headers, start_time, end_time, max_results_per_account)
 
         for post in posts:
             post_id_raw = post.get("id")

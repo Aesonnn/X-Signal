@@ -215,3 +215,24 @@ class N8NReply(models.Model):
             models.Index(fields=["workspace_key", "received_at"], name="idx_n8n_reply_ws_received"),
             models.Index(fields=["workspace_key", "requested_at"], name="idx_n8n_reply_ws_requested"),
         ]
+
+
+class UserProfile(models.Model):
+    ROLE_ADMIN = "admin"
+    ROLE_USER = "user"
+
+    ROLE_CHOICES = [
+        (ROLE_ADMIN, "Admin"),
+        (ROLE_USER, "User"),
+    ]
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="profile")
+    role = models.CharField(max_length=16, choices=ROLE_CHOICES, default=ROLE_USER, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "user_profiles"
+
+    def __str__(self) -> str:
+        return f"{self.user.username} ({self.get_role_display()})"

@@ -3,33 +3,38 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>My Workspaces · X-Signal</title>
+  <title>My Dashboards · X-Signal</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="min-h-full bg-[#050505] text-[#E7E9EA] font-sans">
   <main class="max-w-6xl mx-auto px-4 py-8 space-y-8">
-    <header class="flex items-center justify-between">
+    <header class="flex items-center justify-between gap-4">
       <div>
-        <h1 class="text-2xl font-bold text-white">My Dashboard Workspaces</h1>
-        <p class="text-sm text-[#71767B]">Create separate workspaces for future account-specific tracking and API credentials.</p>
+        <h1 class="text-2xl font-bold text-white">My Dashboards</h1>
+        <p class="text-sm text-[#71767B]">Create separate dashboards for future account-specific tracking and API credentials.</p>
       </div>
-      <form method="post" action="{% url 'logout' %}">
-        {% csrf_token %}
-        <button class="rounded-md border border-[#2F3336] px-3 py-2 text-sm text-[#E7E9EA]">Logout</button>
-      </form>
+      <div class="flex items-center gap-2">
+        {% if can_access_admin_console %}
+          <a href="{% url 'admin_console' %}" class="rounded-md border border-[#2F3336] px-3 py-2 text-sm text-[#E7E9EA]">Admin Console</a>
+        {% endif %}
+        <form method="post" action="{% url 'logout' %}">
+          {% csrf_token %}
+          <button class="rounded-md border border-[#2F3336] px-3 py-2 text-sm text-[#E7E9EA]">Logout</button>
+        </form>
+      </div>
     </header>
 
     {% if messages %}
       <section class="space-y-2">
         {% for message in messages %}
-          <div class="rounded-lg border border-[#2F3336] bg-[#0b0b0b] px-4 py-3 text-sm">{{ message }}</div>
+          <div class="rounded-lg border px-4 py-3 text-sm {% if 'error' in message.tags %}border-red-500/60 bg-red-500/10 text-red-300{% elif 'success' in message.tags %}border-green-500/60 bg-green-500/10 text-green-300{% else %}border-[#2F3336] bg-[#0b0b0b] text-[#E7E9EA]{% endif %}">{{ message }}</div>
         {% endfor %}
       </section>
     {% endif %}
 
     <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <div class="rounded-2xl border border-[#2F3336] bg-[#0b0b0b] p-6">
-        <h2 class="text-lg font-semibold text-white mb-4">Create Workspace</h2>
+        <h2 class="text-lg font-semibold text-white mb-4">Create Dashboard</h2>
         <form method="post" action="{% url 'create_user_dashboard' %}" class="space-y-4">
           {% csrf_token %}
           <div>
@@ -64,7 +69,7 @@
       </div>
 
       <div class="rounded-2xl border border-[#2F3336] bg-[#0b0b0b] p-6">
-        <h2 class="text-lg font-semibold text-white mb-4">Your Workspaces</h2>
+        <h2 class="text-lg font-semibold text-white mb-4">Your Dashboards</h2>
         <div class="space-y-3">
           {% for dashboard in dashboards %}
             <div class="rounded-xl border border-[#2F3336] bg-[#050505] px-4 py-3">
@@ -76,19 +81,43 @@
                 <div class="text-xs text-[#71767B]">{{ dashboard.fetch_window_days }}d · {{ dashboard.fetch_posts_per_account }} posts/account</div>
                 <div class="flex items-center gap-2">
                   <a href="{% url 'edit_user_dashboard' dashboard.id %}" class="rounded-md border border-[#2F3336] px-3 py-2 text-xs text-[#E7E9EA]">Edit</a>
-                  <form method="post" action="{% url 'sync_dashboard_posts' dashboard.id %}">
+                  <form method="post" action="{% url 'sync_dashboard_posts' dashboard.id %}" data-fetch-posts-form="1">
                     {% csrf_token %}
-                    <button type="submit" class="rounded-md bg-[#1D9BF0] px-3 py-2 text-xs font-medium text-white">Fetch Posts</button>
+                    <button type="submit" class="rounded-md bg-[#1D9BF0] px-3 py-2 text-xs font-medium text-white disabled:opacity-60 disabled:cursor-not-allowed" data-fetch-posts-btn="1">Fetch Posts</button>
                   </form>
                 </div>
               </div>
             </div>
           {% empty %}
-            <div class="text-sm text-[#71767B]">No workspaces yet. Create one to continue.</div>
+            <div class="text-sm text-[#71767B]">No dashboards yet. Create one to continue.</div>
           {% endfor %}
         </div>
       </div>
     </section>
   </main>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      var forms = document.querySelectorAll("form[data-fetch-posts-form='1']");
+
+      forms.forEach(function (form) {
+        form.addEventListener("submit", function (event) {
+          var button = form.querySelector("button[data-fetch-posts-btn='1']");
+          if (!button) {
+            return;
+          }
+
+          if (button.disabled) {
+            event.preventDefault();
+            return;
+          }
+
+          button.disabled = true;
+          button.dataset.originalText = button.textContent || "Fetch Posts";
+          button.textContent = "Fetching...";
+        });
+      });
+    });
+  </script>
 </body>
 </html>
