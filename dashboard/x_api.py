@@ -127,8 +127,8 @@ def sync_workspace_posts(
         processed_accounts += 1
         try:
             posts = _fetch_user_posts(account, headers, start_time, end_time, max_results_per_account)
-        except requests.RequestException:
-            return {"ok": False, "error": "Check your API key and balance"}
+        except requests.RequestException as exc:
+            return {"ok": False, "error": _format_api_error(exc)}
 
         if not posts:
             skipped_accounts += 1
