@@ -5,7 +5,7 @@ from datetime import timedelta
 
 from django.core.management.base import BaseCommand
 from django.db.models import Avg, Count, Q, Sum
-from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.feature_extraction.text import CountVectorizer, ENGLISH_STOP_WORDS
 
 from dashboard.models import (
     DailyAffiliationMetric,
@@ -19,16 +19,51 @@ from dashboard.models import (
 class Command(BaseCommand):
     help = "Rebuild daily and rolling-7-day aggregate metric tables from Main Post data."
 
+    CUSTOM_STOP_WORDS = {
+        "rt",
+        "amp",
+        "https",
+        "http",
+        "co",
+        "tco",
+        "breaking",
+        "just",
+        "new",
+        "news"
+    }
+
     def _extract_trends(self, qs, top_n: int = 5):
         texts = [text for text in qs.values_list("text", flat=True) if text]
         if not texts:
             return []
 
         url_pattern = re.compile(r"https?://\S+|www\.\S+")
-        clean_texts = [url_pattern.sub("", str(text)) for text in texts]
+        mention_pattern = re.compile(r"@\w+")
+        stop_words = ENGLISH_STOP_WORDS.union(self.CUSTOM_STOP_WORDS)
+
+        clean_texts = []
+        for text in texts:
+            value = str(text or "")
+            value = url_pattern.sub(" ", value)
+            value = mention_pattern.sub(" ", value)
+            value = value.replace("&amp;", " and ")
+            value = value.replace("#", " ")
+            value = re.sub(r"[^A-Za-z\s]", " ", value)
+            value = re.sub(r"\s+", " ", value).strip().lower()
+            if value:
+                clean_texts.append(value)
+
+        if not clean_texts:
+            return []
 
         try:
-            vec = CountVectorizer(stop_words="english", ngram_range=(1, 2), min_df=1, max_df=1.0)
+            vec = CountVectorizer(
+                stop_words=list(stop_words),
+                ngram_range=(1, 2),
+                min_df=1,
+                max_df=1.0,
+                token_pattern=r"(?u)\b[a-zA-Z][a-zA-Z]+\b",
+            )
             matrix = vec.fit_transform(clean_texts)
             counts = matrix.sum(axis=0).A1
             terms = vec.get_feature_names_out()

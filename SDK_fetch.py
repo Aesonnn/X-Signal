@@ -7,16 +7,16 @@ from xdk import Client
 
 
 IDS_CSV_PATH = "ids.csv"
-POSTS_PER_USER = 10
-OUTPUT_CSV_PATH = "recent_posts_304.csv"
+POSTS_PER_USER = 20
+OUTPUT_CSV_PATH = "recent_posts_2304.csv"
 
 
 def _build_date_to_today_range() -> Dict[str, str]:
 	now_utc = datetime.now(timezone.utc)
-	start_utc = datetime(now_utc.year, 4, 3, 0, 0, 0, tzinfo=timezone.utc)
-	end_utc = datetime(now_utc.year, 4, 3, 23, 30, 0, tzinfo=timezone.utc)
+	start_utc = datetime(now_utc.year, 4, 23, 0, 0, 0, tzinfo=timezone.utc)
+	end_utc = datetime(now_utc.year, 4, 23, 20, 20, 0, tzinfo=timezone.utc)
 	if now_utc < start_utc:
-		start_utc = datetime(now_utc.year - 1, 4, 3, 0, 0, 0, tzinfo=timezone.utc)
+		start_utc = datetime(now_utc.year - 1, 4, 23, 0, 0, 0, tzinfo=timezone.utc)
 
 	# search_recent only supports the last 7 days.
 	min_supported_start = end_utc - timedelta(days=7)

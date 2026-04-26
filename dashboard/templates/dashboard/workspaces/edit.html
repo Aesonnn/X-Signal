@@ -7,6 +7,23 @@
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="min-h-full bg-[#050505] text-[#E7E9EA] font-sans">
+  <header class="border-b border-[#2F3336] bg-[#050505]/95">
+    <div class="max-w-3xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+      <div class="text-lg font-semibold text-white">X-Signal</div>
+      <div class="flex flex-wrap items-center gap-2 text-sm text-[#E7E9EA]">
+        <a href="{% url 'dashboard' %}?workspace=main&affiliation=ALL" class="rounded-md border border-[#2F3336] px-3 py-2 hover:bg-[#0b0b0b]">Main Dashboard</a>
+        <a href="{% url 'dashboard_hub' %}" class="rounded-md border border-[#2F3336] px-3 py-2 hover:bg-[#0b0b0b]">Manage Dashboards</a>
+        {% if can_access_admin_console %}
+          <a href="{% url 'admin_console' %}" class="rounded-md border border-[#2F3336] px-3 py-2 hover:bg-[#0b0b0b]">Admin Console</a>
+        {% endif %}
+        <form method="post" action="{% url 'logout' %}">
+          {% csrf_token %}
+          <button class="rounded-md border border-[#2F3336] px-3 py-2">Logout</button>
+        </form>
+      </div>
+    </div>
+  </header>
+
   <main class="max-w-3xl mx-auto px-4 py-8 space-y-6">
     <header class="flex items-center justify-between">
       <div>

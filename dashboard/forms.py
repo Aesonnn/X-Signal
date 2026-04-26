@@ -10,6 +10,7 @@ from .models import UserDashboard
 
 
 User = get_user_model()
+DASHBOARD_NAME_MAX_LENGTH = 20
 
 
 class SignUpForm(UserCreationForm):
@@ -44,10 +45,15 @@ class UserDashboardForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
+        self._enforce_name_limit = kwargs.pop("enforce_name_limit", False)
         super().__init__(*args, **kwargs)
+
+        if self._enforce_name_limit:
+            self.fields["name"].max_length = DASHBOARD_NAME_MAX_LENGTH
         self.fields["name"].widget.attrs.update(
             {
-                "class": "w-full rounded-md border border-[#2F3336] bg-[#050505] px-3 py-2 text-sm text-[#E7E9EA]"
+                "class": "w-full rounded-md border border-[#2F3336] bg-[#050505] px-3 py-2 text-sm text-[#E7E9EA]",
+                **({"maxlength": str(DASHBOARD_NAME_MAX_LENGTH)} if self._enforce_name_limit else {}),
             }
         )
         self.fields["selected_accounts"].widget.attrs.update(
@@ -74,6 +80,14 @@ class UserDashboardForm(forms.ModelForm):
     def clean_fetch_window_days(self):
         value = int(self.cleaned_data.get("fetch_window_days") or 7)
         return min(max(value, 1), 30)
+
+    def clean_name(self):
+        value = (self.cleaned_data.get("name") or "").strip()
+        if self._enforce_name_limit and len(value) > DASHBOARD_NAME_MAX_LENGTH:
+            raise forms.ValidationError(
+                f"Dashboard name must be {DASHBOARD_NAME_MAX_LENGTH} characters or fewer."
+            )
+        return value
 
     def clean_fetch_posts_per_account(self):
         value = int(self.cleaned_data.get("fetch_posts_per_account") or 30)
