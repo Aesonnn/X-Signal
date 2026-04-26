@@ -40,8 +40,8 @@ class UserDashboardForm(forms.ModelForm):
                 }
             ),
             "x_api_key": forms.PasswordInput(render_value=False),
-            "fetch_window_days": forms.NumberInput(attrs={"min": 1, "max": 30, "placeholder": "7"}),
-            "fetch_posts_per_account": forms.NumberInput(attrs={"min": 5, "max": 100, "placeholder": "30"}),
+            "fetch_window_days": forms.NumberInput(attrs={"min": 7, "max": 30, "placeholder": "7"}),
+            "fetch_posts_per_account": forms.NumberInput(attrs={"min": 10, "max": 100, "placeholder": "30"}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -79,7 +79,7 @@ class UserDashboardForm(forms.ModelForm):
 
     def clean_fetch_window_days(self):
         value = int(self.cleaned_data.get("fetch_window_days") or 7)
-        return min(max(value, 1), 30)
+        return min(max(value, 7), 30)
 
     def clean_name(self):
         value = (self.cleaned_data.get("name") or "").strip()
@@ -91,7 +91,7 @@ class UserDashboardForm(forms.ModelForm):
 
     def clean_fetch_posts_per_account(self):
         value = int(self.cleaned_data.get("fetch_posts_per_account") or 30)
-        return min(max(value, 5), 100)
+        return min(max(value, 10), 100)
 
     def clean_selected_accounts(self):
         raw = (self.cleaned_data.get("selected_accounts") or "").strip()

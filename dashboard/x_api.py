@@ -14,6 +14,21 @@ from .sentiment import RobertaSentimentScorer
 API_BASE = "https://api.x.com/2"
 
 
+def _format_api_error(exc: requests.RequestException) -> str:
+    response = getattr(exc, "response", None)
+    if response is None:
+        return str(exc) or "Unknown request error"
+
+    response_text = (response.text or "").strip()
+    if len(response_text) > 1200:
+        response_text = response_text[:1200] + "..."
+
+    base_message = f"X API request failed (HTTP {response.status_code})"
+    if response_text:
+        return f"{base_message}: {response_text}"
+    return base_message
+
+
 def _parse_accounts_with_affiliation(raw_accounts: str) -> list[tuple[str, str]]:
     if not raw_accounts:
         return []
@@ -43,9 +58,9 @@ def _build_time_window(days: int) -> tuple[str, str]:
     now_utc = datetime.now(timezone.utc)
     # recent search requires end_time to be slightly in the past.
     end_utc = now_utc - timedelta(minutes=1)
-    start_utc = end_utc - timedelta(days=max(1, days))
-    # recent search supports up to ~7 days of history.
-    min_supported_start = end_utc - timedelta(days=7)
+    start_utc = end_utc - timedelta(days=max(7, days))
+    # recent search supports up to ~7 days from the current time, not end_time.
+    min_supported_start = now_utc - timedelta(days=7)
     if start_utc < min_supported_start:
         start_utc = min_supported_start
     return (
