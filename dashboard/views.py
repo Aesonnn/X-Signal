@@ -362,6 +362,71 @@ def _get_correlation(df, metric_col):
     return round(val, 3) if not pd.isna(val) else 0.0
 
 
+def _build_correlation_insights(correlation_data: list[dict]) -> list[dict]:
+    metric_windows = [
+        (
+            "All Time",
+            [
+                ("like_count", "likes"),
+                ("retweet_count", "retweets"),
+                ("reply_count", "replies"),
+                ("impression_count", "impressions"),
+            ],
+        ),
+        (
+            "Last 7d",
+            [
+                ("like_count_7d", "likes"),
+                ("retweet_count_7d", "retweets"),
+                ("reply_count_7d", "replies"),
+                ("impression_count_7d", "impressions"),
+            ],
+        ),
+    ]
+
+    insights: list[dict] = []
+    for row in correlation_data:
+        row_affiliation = str(row.get("affiliation") or "Unknown")
+        window_summaries: list[str] = []
+
+        for window_label, metric_keys in metric_windows:
+            values: list[tuple[str, float]] = []
+            for metric_key, metric_label in metric_keys:
+                if metric_key not in row:
+                    continue
+                raw_value = row.get(metric_key)
+                if raw_value is None:
+                    continue
+                try:
+                    values.append((metric_label, float(raw_value)))
+                except (TypeError, ValueError):
+                    continue
+
+            if not values:
+                continue
+
+            avg_corr = sum(value for _, value in values) / len(values)
+            
+            if avg_corr >= 0.1:
+                insight_text = "Positive sentiment correlates with engagement."
+            elif avg_corr <= -0.1:
+                insight_text = "Negative sentiment correlates with engagement."
+            else:
+                insight_text = "No significant correlation."
+
+            window_summaries.append(f"{window_label}: {insight_text}")
+
+        if window_summaries:
+            insights.append(
+                {
+                    "affiliation": row_affiliation,
+                    "summary": "\n".join(window_summaries),
+                }
+            )
+
+    return insights
+
+
 def _get_latest_rolling_affiliation_rows(selected_affiliation: str):
     if selected_affiliation == "ALL":
         latest_global = Rolling7dGlobalMetric.objects.order_by("-window_end_day").first()
@@ -1157,6 +1222,7 @@ def dashboard(request):
                 correlation_data.append(row)
 
     correlation_data = _map_correlation_affiliations(correlation_data)
+    correlation_insights = _build_correlation_insights(correlation_data)
 
     context = {
         "line_chart": line_fig.to_html(full_html=False, include_plotlyjs=False, div_id="daily-line-chart"),
@@ -1170,6 +1236,7 @@ def dashboard(request):
         "daily_top_trends_7d": daily_top_trends_7d,
         "trends_by_affiliation": trends_by_affiliation,
         "correlation_data": correlation_data,
+        "correlation_insights": correlation_insights,
         "n8n_reply_data": _get_latest_n8n_reply_data(active_workspace_id),
         "n8n_reply_auth_value": f"Bearer {N8N_REPLY_AUTH_TOKEN}",
         "user_dashboards": user_dashboards,

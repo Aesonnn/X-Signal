@@ -56,10 +56,8 @@ def _parse_accounts_with_affiliation(raw_accounts: str) -> list[tuple[str, str]]
 
 def _build_time_window(days: int) -> tuple[str, str]:
     now_utc = datetime.now(timezone.utc)
-    # recent search requires end_time to be slightly in the past.
     end_utc = now_utc - timedelta(minutes=1)
     start_utc = end_utc - timedelta(days=max(7, days))
-    # recent search supports up to ~7 days from the current time, not end_time.
     min_supported_start = now_utc - timedelta(days=7)
     if start_utc < min_supported_start:
         start_utc = min_supported_start

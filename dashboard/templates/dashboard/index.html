@@ -272,6 +272,18 @@
           </tbody>
         </table>
       </div>
+
+      {% if correlation_insights %}
+        <div class="mt-5 space-y-2">
+          <h3 class="text-sm font-semibold text-white">Interpretation</h3>
+          {% for insight in correlation_insights %}
+            <div class="rounded-lg border border-xline bg-xbg px-4 py-3">
+              <div class="text-sm font-medium text-white">{{ insight.affiliation }}</div>
+              <p class="mt-1 text-sm text-xmuted">{{ insight.summary|linebreaksbr }}</p>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
     </section>
 
     </div>

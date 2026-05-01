@@ -11,6 +11,8 @@ from .models import UserDashboard
 
 User = get_user_model()
 DASHBOARD_NAME_MAX_LENGTH = 20
+FETCH_WINDOW_DAYS_MIN = 7
+FETCH_POSTS_PER_ACCOUNT_MIN = 20
 
 
 class SignUpForm(UserCreationForm):
@@ -40,8 +42,20 @@ class UserDashboardForm(forms.ModelForm):
                 }
             ),
             "x_api_key": forms.PasswordInput(render_value=False),
-            "fetch_window_days": forms.NumberInput(attrs={"min": 7, "max": 30, "placeholder": "7"}),
-            "fetch_posts_per_account": forms.NumberInput(attrs={"min": 10, "max": 100, "placeholder": "30"}),
+            "fetch_window_days": forms.NumberInput(
+                attrs={
+                    "min": FETCH_WINDOW_DAYS_MIN,
+                    "max": 30,
+                    "placeholder": "7",
+                }
+            ),
+            "fetch_posts_per_account": forms.NumberInput(
+                attrs={
+                    "min": FETCH_POSTS_PER_ACCOUNT_MIN,
+                    "max": 100,
+                    "placeholder": "30",
+                }
+            ),
         }
 
     def __init__(self, *args, **kwargs):
@@ -68,18 +82,22 @@ class UserDashboardForm(forms.ModelForm):
         )
         self.fields["fetch_window_days"].widget.attrs.update(
             {
-                "class": "w-full rounded-md border border-[#2F3336] bg-[#050505] px-3 py-2 text-sm text-[#E7E9EA]"
+                "class": "w-full rounded-md border border-[#2F3336] bg-[#050505] px-3 py-2 text-sm text-[#E7E9EA]",
+                "min": str(FETCH_WINDOW_DAYS_MIN),
+                "oninput": f"if(this.value!=='' && Number(this.value)<{FETCH_WINDOW_DAYS_MIN})this.value={FETCH_WINDOW_DAYS_MIN};",
             }
         )
         self.fields["fetch_posts_per_account"].widget.attrs.update(
             {
-                "class": "w-full rounded-md border border-[#2F3336] bg-[#050505] px-3 py-2 text-sm text-[#E7E9EA]"
+                "class": "w-full rounded-md border border-[#2F3336] bg-[#050505] px-3 py-2 text-sm text-[#E7E9EA]",
+                "min": str(FETCH_POSTS_PER_ACCOUNT_MIN),
+                "oninput": f"if(this.value!=='' && Number(this.value)<{FETCH_POSTS_PER_ACCOUNT_MIN})this.value={FETCH_POSTS_PER_ACCOUNT_MIN};",
             }
         )
 
     def clean_fetch_window_days(self):
-        value = int(self.cleaned_data.get("fetch_window_days") or 7)
-        return min(max(value, 7), 30)
+        value = int(self.cleaned_data.get("fetch_window_days") or FETCH_WINDOW_DAYS_MIN)
+        return min(max(value, FETCH_WINDOW_DAYS_MIN), 30)
 
     def clean_name(self):
         value = (self.cleaned_data.get("name") or "").strip()
@@ -91,7 +109,7 @@ class UserDashboardForm(forms.ModelForm):
 
     def clean_fetch_posts_per_account(self):
         value = int(self.cleaned_data.get("fetch_posts_per_account") or 30)
-        return min(max(value, 10), 100)
+        return min(max(value, FETCH_POSTS_PER_ACCOUNT_MIN), 100)
 
     def clean_selected_accounts(self):
         raw = (self.cleaned_data.get("selected_accounts") or "").strip()
