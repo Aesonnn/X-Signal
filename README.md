@@ -1,6 +1,6 @@
-# X-Analysis (Django Backend)
+# X-Signal
 
-This project now uses a Django backend with a dedicated dashboard app.
+Web dashboard for X posts sentiment sanalysis, trend identfication and AI overview.
 
 ## Structure
 
@@ -23,7 +23,3 @@ Open: `http://localhost:8050/`
 
 
 
-sudo nano /etc/nginx/sites-available/xsignal
-
-sudo ln -sf /etc/nginx/sites-available/xsignal /etc/nginx/sites-enabled/
-sudo rm -f /etc/nginx/sites-enabled/default
