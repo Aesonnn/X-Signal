@@ -130,7 +130,7 @@
         <!-- Global Trends Section -->
         <div class="mt-8 pt-6 border-t border-xline">
           <div class="mb-4 flex items-center justify-between gap-3">
-            <h2 class="text-xl font-bold tracking-tight text-white">Global & Week Trends</h2>
+            <h2 class="text-xl font-bold tracking-tight text-white">Week Trends</h2>
             <form method="post" action="{% url 'ai_overview' %}" id="ai-overview-form">
               {% csrf_token %}
               <input type="hidden" name="affiliation" value="{{ selected_affiliation }}">
