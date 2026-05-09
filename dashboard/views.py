@@ -891,7 +891,7 @@ def ai_overview(request):
     try:
         response = requests.post(webhook_url, json=payload, timeout=25)
         response.raise_for_status()
-        messages.success(request, "AI Overview sent to n8n webhook.")
+        messages.success(request, "Awaiting AI Overview.")
     except requests.RequestException as exc:
         messages.error(request, f"Failed to send AI Overview to n8n: {exc}")
 
