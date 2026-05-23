@@ -786,7 +786,7 @@ def edit_user_dashboard(request, workspace_id: int):
                 updated_workspace.x_api_key = existing_api_key
             updated_workspace.owner = request.user
             updated_workspace.save()
-            messages.success(request, f"Workspace '{updated_workspace.name}' updated.")
+            messages.success(request, f"Dashboard '{updated_workspace.name}' updated.")
             return redirect("dashboard_hub")
     else:
         form = UserDashboardForm(instance=workspace)
