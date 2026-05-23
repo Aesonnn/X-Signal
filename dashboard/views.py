@@ -244,14 +244,14 @@ def _build_day_breakdown_payload(selected_affiliation: str) -> dict:
 
 def _apply_dark_style(fig):
     fig.update_layout(
-        template="plotly_dark",
-        paper_bgcolor="#0b0b0b",
-        plot_bgcolor="#0b0b0b",
-        font={"color": "#E7E9EA", "family": "Inter, ui-sans-serif, system-ui"},
+        template="plotly_white",
+        paper_bgcolor="#F7F9F9",
+        plot_bgcolor="#F7F9F9",
+        font={"color": "#0F1419", "family": "Inter, ui-sans-serif, system-ui", "size": 14},
         margin={"l": 28, "r": 18, "t": 50, "b": 36},
         legend={
             "bgcolor": "rgba(0,0,0,0)",
-            "font": {"color": "#E5E7EB"},
+            "font": {"color": "#536471"},
             "orientation": "h",
             "yanchor": "bottom",
             "y": 1.02,
@@ -260,8 +260,8 @@ def _apply_dark_style(fig):
         },
         hoverlabel={"bgcolor": "#0F1419", "font_color": "#F9FAFB"},
     )
-    fig.update_xaxes(gridcolor="#2F3336", linecolor="#2F3336", zerolinecolor="#2F3336")
-    fig.update_yaxes(gridcolor="#2F3336", linecolor="#2F3336", zerolinecolor="#2F3336")
+    fig.update_xaxes(gridcolor="#EFF3F4", linecolor="#EFF3F4", zerolinecolor="#EFF3F4")
+    fig.update_yaxes(gridcolor="#EFF3F4", linecolor="#EFF3F4", zerolinecolor="#EFF3F4")
     return fig
 
 
@@ -1225,8 +1225,8 @@ def dashboard(request):
     correlation_insights = _build_correlation_insights(correlation_data)
 
     context = {
-        "line_chart": line_fig.to_html(full_html=False, include_plotlyjs=False, div_id="daily-line-chart"),
-        "bar_chart": bar_fig.to_html(full_html=False, include_plotlyjs=False, div_id="affiliation-bar-chart"),
+        "line_chart": line_fig.to_html(full_html=False, include_plotlyjs=False, div_id="daily-line-chart", config={"responsive": True}, default_width="100%", default_height="450px"),
+        "bar_chart": bar_fig.to_html(full_html=False, include_plotlyjs=False, div_id="affiliation-bar-chart", config={"responsive": True}, default_width="100%", default_height="450px"),
         "affiliation_options": affiliation_options,
         "selected_affiliation": selected_affiliation,
         "day_breakdown": day_breakdown,

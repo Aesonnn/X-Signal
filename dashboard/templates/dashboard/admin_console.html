@@ -1,24 +1,24 @@
 <!doctype html>
-<html lang="en" class="h-full">
+<html lang="en" class="h-full" style="font-size: 120%;">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Admin Console · X-Signal</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="min-h-full bg-[#050505] text-[#E7E9EA] font-sans">
-  <header class="border-b border-[#2F3336] bg-[#050505]/95">
+<body class="min-h-full bg-[#FFFFFF] text-[#0F1419] font-sans">
+  <header class="border-b border-[#EFF3F4] bg-[#FFFFFF]/95">
     <div class="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
-      <div class="text-lg font-semibold text-white">X-Signal</div>
-      <div class="flex flex-wrap items-center gap-2 text-sm text-[#E7E9EA]">
-        <a href="{% url 'dashboard' %}?workspace=main&affiliation=ALL" class="rounded-md border border-[#2F3336] px-3 py-2 hover:bg-[#0b0b0b]">Main Dashboard</a>
-        <a href="{% url 'dashboard_hub' %}" class="rounded-md border border-[#2F3336] px-3 py-2 hover:bg-[#0b0b0b]">Manage Dashboards</a>
+      <div class="text-lg font-semibold text-[#0F1419]">X-Signal</div>
+      <div class="flex flex-wrap items-center gap-2 text-sm text-[#0F1419]">
+        <a href="{% url 'dashboard' %}?workspace=main&affiliation=ALL" class="rounded-md border border-[#EFF3F4] px-3 py-2 hover:bg-[#F7F9F9]">Main Dashboard</a>
+        <a href="{% url 'dashboard_hub' %}" class="rounded-md border border-[#EFF3F4] px-3 py-2 hover:bg-[#F7F9F9]">Manage Dashboards</a>
         {% if can_access_admin_console %}
-          <a href="{% url 'admin_console' %}" class="rounded-md border border-[#2F3336] px-3 py-2 bg-[#0b0b0b]">Admin Console</a>
+          <a href="{% url 'admin_console' %}" class="rounded-md border border-[#EFF3F4] px-3 py-2 bg-[#F7F9F9]">Admin Console</a>
         {% endif %}
         <form method="post" action="{% url 'logout' %}">
           {% csrf_token %}
-          <button class="rounded-md border border-[#2F3336] px-3 py-2">Logout</button>
+          <button class="rounded-md border border-[#EFF3F4] px-3 py-2">Logout</button>
         </form>
       </div>
     </div>
@@ -27,33 +27,33 @@
   <main class="max-w-6xl mx-auto px-4 py-8 space-y-8">
     <header class="flex items-center justify-between gap-3 flex-wrap">
       <div>
-        <h1 class="text-2xl font-bold text-white">Admin Console</h1>
-        <p class="text-sm text-[#71767B]">Manage all users and dashboards from one place.</p>
+        <h1 class="text-2xl font-bold text-[#0F1419]">Admin Console</h1>
+        <p class="text-sm text-[#536471]">Manage all users and dashboards from one place.</p>
       </div>
-      <a href="{% url 'dashboard' %}?workspace=main&affiliation=ALL" class="rounded-md border border-[#2F3336] px-3 py-2 text-sm text-[#E7E9EA]">Back to Main Dashboard</a>
+      <a href="{% url 'dashboard' %}?workspace=main&affiliation=ALL" class="rounded-md border border-[#EFF3F4] px-3 py-2 text-sm text-[#0F1419]">Back to Main Dashboard</a>
     </header>
 
     {% if messages %}
       <section class="space-y-2">
         {% for message in messages %}
-          <div class="rounded-lg border px-4 py-3 text-sm {% if 'error' in message.tags %}border-red-500/60 bg-red-500/10 text-red-300{% elif 'success' in message.tags %}border-green-500/60 bg-green-500/10 text-green-300{% else %}border-[#2F3336] bg-[#0b0b0b] text-[#E7E9EA]{% endif %}">{{ message }}</div>
+          <div class="rounded-lg border px-4 py-3 text-sm {% if 'error' in message.tags %}border-red-500/60 bg-red-500/10 text-red-300{% elif 'success' in message.tags %}border-green-500/60 bg-green-500/10 text-green-300{% else %}border-[#EFF3F4] bg-[#F7F9F9] text-[#0F1419]{% endif %}">{{ message }}</div>
         {% endfor %}
       </section>
     {% endif %}
 
-    <section class="rounded-2xl border border-[#2F3336] bg-[#0b0b0b] p-6">
+    <section class="rounded-2xl border border-[#EFF3F4] bg-[#F7F9F9] p-6">
       <div class="mb-4 flex items-center justify-between gap-3 flex-wrap">
-        <div class="inline-flex rounded-lg border border-[#2F3336] bg-[#050505] p-1">
+        <div class="inline-flex rounded-lg border border-[#EFF3F4] bg-[#FFFFFF] p-1">
           <button id="admin-tab-users" type="button" class="rounded-md px-3 py-2 text-sm font-medium bg-[#1D9BF0] text-white">Users</button>
-          <button id="admin-tab-dashboards" type="button" class="rounded-md px-3 py-2 text-sm font-medium text-[#C7CCD1] hover:text-white">Dashboards</button>
+          <button id="admin-tab-dashboards" type="button" class="rounded-md px-3 py-2 text-sm font-medium text-[#536471] hover:text-[#0F1419]">Dashboards</button>
         </div>
-        <div id="admin-tab-total" class="text-xs text-[#71767B]">Total: {{ user_rows|length }}</div>
+        <div id="admin-tab-total" class="text-xs text-[#536471]">Total: {{ user_rows|length }}</div>
       </div>
 
       <div class="overflow-x-auto">
         <div class="max-h-[32rem] overflow-y-auto">
           <table class="w-full min-w-[760px] text-sm">
-            <thead id="admin-head-users" class="text-xs uppercase tracking-wide text-[#71767B] sticky top-0 bg-[#0b0b0b]">
+            <thead id="admin-head-users" class="text-xs uppercase tracking-wide text-[#536471] sticky top-0 bg-[#F7F9F9]">
               <tr>
                 <th class="text-left px-3 py-2">Username</th>
                 <th class="text-left px-3 py-2">Email</th>
@@ -62,7 +62,7 @@
                 <th class="text-right px-3 py-2">Action</th>
               </tr>
             </thead>
-            <thead id="admin-head-dashboards" class="hidden text-xs uppercase tracking-wide text-[#71767B] sticky top-0 bg-[#0b0b0b]">
+            <thead id="admin-head-dashboards" class="hidden text-xs uppercase tracking-wide text-[#536471] sticky top-0 bg-[#F7F9F9]">
               <tr>
                 <th class="text-left px-3 py-2">Name</th>
                 <th class="text-left px-3 py-2">Owner</th>
@@ -75,14 +75,14 @@
 
             <tbody id="admin-body-users">
               {% for row in user_rows %}
-                <tr class="border-t border-[#2F3336]">
-                  <td class="px-3 py-3 text-white">{{ row.username }}</td>
-                  <td class="px-3 py-3 text-[#C7CCD1]">{{ row.email|default:"-" }}</td>
-                  <td class="px-3 py-3 text-[#C7CCD1]">{{ row.role|upper }}</td>
-                  <td class="px-3 py-3 text-[#C7CCD1]">{{ row.dashboard_count }}</td>
+                <tr class="border-t border-[#EFF3F4]">
+                  <td class="px-3 py-3 text-[#0F1419]">{{ row.username }}</td>
+                  <td class="px-3 py-3 text-[#536471]">{{ row.email|default:"-" }}</td>
+                  <td class="px-3 py-3 text-[#536471]">{{ row.role|upper }}</td>
+                  <td class="px-3 py-3 text-[#536471]">{{ row.dashboard_count }}</td>
                   <td class="px-3 py-3 text-right">
                     {% if row.is_current %}
-                      <span class="text-xs text-[#71767B]">Current user</span>
+                      <span class="text-xs text-[#536471]">Current user</span>
                     {% else %}
                       <form method="post" action="{% url 'admin_delete_user' row.id %}" class="inline" onsubmit="return confirm('Delete user {{ row.username }} and all their dashboards/posts/replies? This cannot be undone.');">
                         {% csrf_token %}
@@ -93,19 +93,19 @@
                 </tr>
               {% empty %}
                 <tr>
-                  <td colspan="5" class="px-3 py-4 text-[#71767B]">No users found.</td>
+                  <td colspan="5" class="px-3 py-4 text-[#536471]">No users found.</td>
                 </tr>
               {% endfor %}
             </tbody>
 
             <tbody id="admin-body-dashboards" class="hidden">
               {% for dashboard in dashboard_rows %}
-                <tr class="border-t border-[#2F3336]">
-                  <td class="px-3 py-3 text-white">{{ dashboard.name }}</td>
-                  <td class="px-3 py-3 text-[#C7CCD1]">{{ dashboard.owner.username }}</td>
-                  <td class="px-3 py-3 text-[#C7CCD1]">{{ dashboard.posts_count }}</td>
-                  <td class="px-3 py-3 text-[#C7CCD1]">{{ dashboard.replies_count }}</td>
-                  <td class="px-3 py-3 text-[#C7CCD1]">{{ dashboard.updated_at }}</td>
+                <tr class="border-t border-[#EFF3F4]">
+                  <td class="px-3 py-3 text-[#0F1419]">{{ dashboard.name }}</td>
+                  <td class="px-3 py-3 text-[#536471]">{{ dashboard.owner.username }}</td>
+                  <td class="px-3 py-3 text-[#536471]">{{ dashboard.posts_count }}</td>
+                  <td class="px-3 py-3 text-[#536471]">{{ dashboard.replies_count }}</td>
+                  <td class="px-3 py-3 text-[#536471]">{{ dashboard.updated_at }}</td>
                   <td class="px-3 py-3 text-right">
                     <form method="post" action="{% url 'admin_delete_dashboard' dashboard.id %}" class="inline" onsubmit="return confirm('Delete dashboard {{ dashboard.name }} and all associated posts/replies? This cannot be undone.');">
                       {% csrf_token %}
@@ -115,7 +115,7 @@
                 </tr>
               {% empty %}
                 <tr>
-                  <td colspan="6" class="px-3 py-4 text-[#71767B]">No dashboards found.</td>
+                  <td colspan="6" class="px-3 py-4 text-[#536471]">No dashboards found.</td>
                 </tr>
               {% endfor %}
             </tbody>
@@ -137,9 +137,9 @@
 
       function activateUsersTab() {
         usersTab.classList.add("bg-[#1D9BF0]", "text-white");
-        usersTab.classList.remove("text-[#C7CCD1]");
+        usersTab.classList.remove("text-[#536471]");
         dashboardsTab.classList.remove("bg-[#1D9BF0]", "text-white");
-        dashboardsTab.classList.add("text-[#C7CCD1]");
+        dashboardsTab.classList.add("text-[#536471]");
 
         usersHead.classList.remove("hidden");
         usersBody.classList.remove("hidden");
@@ -150,9 +150,9 @@
 
       function activateDashboardsTab() {
         dashboardsTab.classList.add("bg-[#1D9BF0]", "text-white");
-        dashboardsTab.classList.remove("text-[#C7CCD1]");
+        dashboardsTab.classList.remove("text-[#536471]");
         usersTab.classList.remove("bg-[#1D9BF0]", "text-white");
-        usersTab.classList.add("text-[#C7CCD1]");
+        usersTab.classList.add("text-[#536471]");
 
         dashboardsHead.classList.remove("hidden");
         dashboardsBody.classList.remove("hidden");

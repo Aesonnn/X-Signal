@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" class="h-full">
+<html lang="en" class="h-full" style="font-size: 120%;">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -12,11 +12,11 @@
       theme: {
         extend: {
           colors: {
-            xbg: "#050505",
-            xpanel: "#0b0b0b",
-            xline: "#2F3336",
-            xtext: "#E7E9EA",
-            xmuted: "#71767B",
+            xbg: "#FFFFFF",
+            xpanel: "#F7F9F9",
+            xline: "#EFF3F4",
+            xtext: "#0F1419",
+            xmuted: "#536471",
             xblue: "#1D9BF0"
           }
         }
@@ -34,7 +34,7 @@
             <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5m-16.5 5.25h16.5m-16.5 5.25h16.5" />
           </svg>
         </button>
-        <div class="text-xl font-semibold tracking-tight text-white">X-Signal</div>
+        <div class="text-base font-semibold tracking-tight text-[#0F1419]">X-Signal</div>
       </div>
 
       <div class="flex flex-wrap items-center gap-2 text-sm text-xmuted">
@@ -53,19 +53,19 @@
 
   <div id="workspace-sidebar-overlay" class="fixed inset-0 z-30 hidden bg-black/50 lg:hidden"></div>
 
-  <aside id="workspace-sidebar" class="fixed inset-y-0 left-0 z-40 w-60 transform bg-xbg/95 transition-transform duration-200 ease-out -translate-x-full lg:translate-x-0 lg:top-[61px] lg:h-[calc(100vh-61px)]">
+  <aside id="workspace-sidebar" class="fixed inset-y-0 left-0 z-40 w-40 transform bg-xbg/95 transition-transform duration-200 ease-out -translate-x-full lg:translate-x-0 lg:top-[61px] lg:h-[calc(100vh-61px)]">
     <div class="flex items-center justify-between border-b border-xline px-4 py-4 lg:hidden">
-      <div class="text-xs uppercase tracking-wide text-xmuted">Dashboards</div>
-      <button id="workspace-sidebar-close" type="button" class="rounded-md border border-xline px-2 py-1 text-xs text-xtext">Close</button>
+      <div class="text-[10px] uppercase tracking-wide text-xmuted">Dashboards</div>
+      <button id="workspace-sidebar-close" type="button" class="rounded-md border border-xline px-2 py-1 text-[10px] text-xtext">Close</button>
     </div>
     <div class="px-4 py-6 overflow-y-auto h-full">
-      <div class="mb-4 text-xs uppercase tracking-wide text-xmuted hidden lg:block">Dashboards</div>
+      <div class="mb-4 text-[10px] uppercase tracking-wide text-xmuted hidden lg:block">Dashboards</div>
       <nav class="space-y-2">
         {% for workspace in workspace_items %}
           <a
             data-sidebar-link="1"
             href="{% url 'dashboard' %}?workspace={{ workspace.id }}&affiliation={{ selected_affiliation|urlencode }}"
-            class="block rounded-lg border px-3 py-2 text-sm transition {% if active_workspace_id == workspace.id %}border-xblue bg-xblue/10 text-white{% else %}border-xline bg-xpanel text-xmuted hover:text-xtext{% endif %}"
+            class="block rounded-lg border px-3 py-2 text-xs transition {% if active_workspace_id == workspace.id %}border-xblue bg-xblue/10 text-xblue{% else %}border-xline bg-xpanel text-xmuted hover:text-xtext{% endif %}"
           >
             {{ workspace.name }}
           </a>
@@ -74,7 +74,7 @@
     </div>
   </aside>
 
-  <main class="px-4 md:px-8 lg:px-10 py-6 space-y-8 lg:ml-64">
+  <main class="px-4 lg:px-6 py-6 space-y-8 lg:ml-40">
     {% if messages %}
       <section class="space-y-2">
         {% for message in messages %}
@@ -89,7 +89,7 @@
 
     <section class="rounded-2xl border-2 border-xline bg-xpanel p-6 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
       <div>
-        <h1 class="text-2xl md:text-3xl font-bold tracking-tight text-white">Sentiment Dashboard · {{ active_workspace_name }}</h1>
+        <h1 class="text-2xl md:text-3xl font-bold tracking-tight text-[#0F1419]">Sentiment Dashboard · {{ active_workspace_name }}</h1>
         <p class="mt-1 text-xmuted text-sm">Daily trend and affiliation sentiment distribution.</p>
       </div>
       <div class="w-full md:w-auto md:min-w-[250px] space-y-3">
@@ -119,8 +119,8 @@
       </div>
     </section>
 
-    <section class="grid grid-cols-1 xl:grid-cols-[7fr_3fr] gap-8">
-      <div class="rounded-2xl border-2 border-xline bg-xpanel p-6">
+    <section class="grid grid-cols-1 lg:grid-cols-[7fr_3fr] gap-6">
+      <div class="rounded-2xl border-2 border-xline bg-xpanel p-6 min-w-0">
         <h2 class="text-lg font-semibold text-xtext mb-3">Average Sentiment Score Per Day</h2>
         {{ line_chart|safe }}
         <div id="daily-hover-info" class="mt-3 rounded-lg border border-xline bg-xbg px-3 py-2 text-sm text-xmuted">
@@ -130,7 +130,7 @@
         <!-- Global Trends Section -->
         <div class="mt-8 pt-6 border-t border-xline">
           <div class="mb-4 flex items-center justify-between gap-3">
-            <h2 class="text-xl font-bold tracking-tight text-white">Week Trends</h2>
+            <h2 class="text-xl font-bold tracking-tight text-[#0F1419]">Week Trends</h2>
             <form method="post" action="{% url 'ai_overview' %}" id="ai-overview-form">
               {% csrf_token %}
               <input type="hidden" name="affiliation" value="{{ selected_affiliation }}">
@@ -160,7 +160,7 @@
             <h3 class="text-sm font-medium text-xmuted mb-3">Top Discussion Topics (Last 7 Days)</h3>
             <div class="flex flex-wrap gap-2">
               {% for trend in global_trends_7d %}
-                <a href="https://x.com/search?q={{ trend.term|urlencode }}&src=typed_query" target="_blank" rel="noopener noreferrer" class="px-3 py-1 bg-xline rounded-full text-sm text-white border border-xline transition-colors hover:bg-xblue/35 hover:border-xblue hover:text-white">#{{ trend.term }}</a>
+                <a href="https://x.com/search?q={{ trend.term|urlencode }}&src=typed_query" target="_blank" rel="noopener noreferrer" class="px-3 py-1 bg-xline rounded-full text-sm text-[#0F1419] border border-xline transition-colors hover:bg-xblue/35 hover:border-xblue hover:text-[#0F1419]">#{{ trend.term }}</a>
               {% empty %}
                 <div class="text-sm text-xmuted">No 7-day trends available.</div>
               {% endfor %}
@@ -173,7 +173,7 @@
               <div class="inline-flex gap-2 min-w-max">
               {% for item in daily_top_trends_7d %}
                 {% if item.term != "N/A" %}
-                  <a href="https://x.com/search?q={{ item.term|urlencode }}&src=typed_query" target="_blank" rel="noopener noreferrer" class="shrink-0 rounded-lg border border-xline bg-xbg px-2.5 py-1.5 text-xs text-white transition-colors hover:bg-xblue/20 hover:border-xblue">
+                  <a href="https://x.com/search?q={{ item.term|urlencode }}&src=typed_query" target="_blank" rel="noopener noreferrer" class="shrink-0 rounded-lg border border-xline bg-xbg px-2.5 py-1.5 text-xs text-[#0F1419] transition-colors hover:bg-xblue/20 hover:border-xblue">
                     <div class="text-xmuted leading-tight">{{ item.day }}</div>
                     <div class="leading-tight mt-1">#{{ item.term }} <span class="text-xmuted">({{ item.count }})</span></div>
                   </a>
@@ -205,7 +205,7 @@
                 <div class="flex items-center gap-2 whitespace-nowrap">
                   <h4 class="text-xs font-semibold text-xtext">{{ aff }}</h4>
                   {% for trend in trends %}
-                    <a href="https://x.com/search?q={{ trend.term|urlencode }}&src=typed_query" target="_blank" rel="noopener noreferrer" class="rounded-md border border-xline px-2 py-0.5 text-xs text-white transition-colors hover:bg-xblue/35 hover:text-white">#{{ trend.term }} ({{ trend.count }})</a>
+                    <a href="https://x.com/search?q={{ trend.term|urlencode }}&src=typed_query" target="_blank" rel="noopener noreferrer" class="rounded-md border border-xline px-2 py-0.5 text-xs text-[#0F1419] transition-colors hover:bg-xblue/35 hover:text-[#0F1419]">#{{ trend.term }} ({{ trend.count }})</a>
                   {% empty %}
                     <div class="text-xs text-xmuted">No trends.</div>
                   {% endfor %}
@@ -219,7 +219,7 @@
         </div>
       </div>
 
-      <div class="rounded-2xl border-2 border-xline bg-xpanel p-6">
+      <div class="rounded-2xl border-2 border-xline bg-xpanel p-6 min-w-0 flex flex-col">
         <div class="flex items-center justify-between mb-3">
           <h2 class="text-lg font-semibold text-xtext">Sentiment Label Distribution</h2>
           <button id="reset-bar-chart" class="hidden px-3 py-1 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition">
@@ -235,7 +235,7 @@
 
     <!-- Correlation Analysis -->
     <section class="rounded-2xl border-2 border-xline bg-xpanel p-6">
-      <h2 class="text-xl font-bold tracking-tight text-white mb-4">Sentiment Correlation Analysis</h2>
+      <h2 class="text-xl font-bold tracking-tight text-[#0F1419] mb-4">Sentiment Correlation Analysis</h2>
       <p class="text-sm text-xmuted mb-4">Correlation coefficients (-1.0 to 1.0) between sentiment score and public metrics. Positive values indicate higher sentiment aligns with higher engagement. Values are shown for all available data and for the last 7 days.</p>
       
       <div class="overflow-x-auto">
@@ -256,7 +256,7 @@
           <tbody>
             {% for row in correlation_data %}
               <tr class="border-b border-xline last:border-0 hover:bg-xline/10 transition">
-                <td class="px-4 py-3 font-medium text-white">
+                <td class="px-4 py-3 font-medium text-[#0F1419]">
                   {{ row.affiliation }}
                 </td>
                 <td class="px-4 py-3">{{ row.like_count }}</td>
@@ -275,10 +275,10 @@
 
       {% if correlation_insights %}
         <div class="mt-5 space-y-2">
-          <h3 class="text-sm font-semibold text-white">Interpretation</h3>
+          <h3 class="text-sm font-semibold text-[#0F1419]">Interpretation</h3>
           {% for insight in correlation_insights %}
             <div class="rounded-lg border border-xline bg-xbg px-4 py-3">
-              <div class="text-sm font-medium text-white">{{ insight.affiliation }}</div>
+              <div class="text-sm font-medium text-[#0F1419]">{{ insight.affiliation }}</div>
               <p class="mt-1 text-sm text-xmuted">{{ insight.summary|linebreaksbr }}</p>
             </div>
           {% endfor %}
@@ -595,7 +595,7 @@
           });
           
           const newLayout = JSON.parse(JSON.stringify(originalBarLayout || {}));
-            // newLayout.title = { text: `Sentiment Distribution for ${dayLabel}`, font: { color: "#E7E9EA" } };
+            // newLayout.title = { text: `Sentiment Distribution for ${dayLabel}`, font: { color: "#0F1419" } };
           
           Plotly.react(chartDiv, traces, newLayout);
       }
