@@ -6,11 +6,11 @@
   <title>Edit Dashboard · X-Signal</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="min-h-full bg-[#FFFFFF] text-[#0F1419] font-sans">
+<body class="min-h-full bg-[#FFFFFF] text-[#000000] font-sans">
   <header class="border-b border-[#EFF3F4] bg-[#FFFFFF]/95">
     <div class="max-w-3xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
-      <div class="text-lg font-semibold text-[#0F1419]">X-Signal</div>
-      <div class="flex flex-wrap items-center gap-2 text-sm text-[#0F1419]">
+      <div class="text-lg font-semibold text-[#000000]">X-Signal</div>
+      <div class="flex flex-wrap items-center gap-2 text-sm text-[#000000]">
         <a href="{% url 'dashboard' %}?workspace=main&affiliation=ALL" class="rounded-md border border-[#EFF3F4] px-3 py-2 hover:bg-[#F7F9F9]">Main Dashboard</a>
         <a href="{% url 'dashboard_hub' %}" class="rounded-md border border-[#EFF3F4] px-3 py-2 hover:bg-[#F7F9F9]">Manage Dashboards</a>
         {% if can_access_admin_console %}
@@ -27,43 +27,43 @@
   <main class="max-w-3xl mx-auto px-4 py-8 space-y-6">
     <header class="flex items-center justify-between">
       <div>
-        <h1 class="text-2xl font-bold text-[#0F1419]">Edit Dashboard</h1>
-        <p class="text-sm text-[#536471] mt-1">{{ workspace.name }}</p>
+        <h1 class="text-2xl font-bold text-[#000000]">Edit Dashboard</h1>
+        <p class="text-sm text-[#333333] mt-1">{{ workspace.name }}</p>
       </div>
-      <a href="{% url 'dashboard_hub' %}" class="rounded-md border border-[#EFF3F4] px-3 py-2 text-sm text-[#0F1419]">Back</a>
+      <a href="{% url 'dashboard_hub' %}" class="rounded-md border border-[#EFF3F4] px-3 py-2 text-sm text-[#000000]">Back</a>
     </header>
 
     <section class="rounded-2xl border border-[#EFF3F4] bg-[#F7F9F9] p-6">
       <form method="post" class="space-y-4">
         {% csrf_token %}
         <div>
-          <label class="block text-sm text-[#536471] mb-1">Name</label>
+          <label class="block text-sm text-[#333333] mb-1">Name</label>
           {{ form.name }}
-          <div class="text-xs text-red-300 mt-1">{{ form.name.errors }}</div>
+          <div class="text-xs text-red-700 mt-1">{{ form.name.errors }}</div>
         </div>
         <div>
-          <label class="block text-sm text-[#536471] mb-1">Selected Accounts</label>
+          <label class="block text-sm text-[#333333] mb-1">Selected Accounts</label>
           {{ form.selected_accounts }}
-          <div class="text-xs text-[#536471] mt-1">Format: one per line as account|L or account|C.</div>
-          <div class="text-xs text-red-300 mt-1">{{ form.selected_accounts.errors }}</div>
+          <div class="text-xs text-[#333333] mt-1">Format: one per line as account|L or account|C.</div>
+          <div class="text-xs text-red-700 mt-1">{{ form.selected_accounts.errors }}</div>
         </div>
         <div>
-          <label class="block text-sm text-[#536471] mb-1">X API Key</label>
+          <label class="block text-sm text-[#333333] mb-1">X API Key</label>
           {{ form.x_api_key }}
-          <div class="text-xs text-[#536471] mt-1">Leave blank to keep existing key.</div>
-          <div class="text-xs text-red-300 mt-1">{{ form.x_api_key.errors }}</div>
+          <div class="text-xs text-[#333333] mt-1">Leave blank to keep existing key.</div>
+          <div class="text-xs text-red-700 mt-1">{{ form.x_api_key.errors }}</div>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
-            <label class="block text-sm text-[#536471] mb-1">Window Days</label>
+            <label class="block text-sm text-[#333333] mb-1">Window Days</label>
             {{ form.fetch_window_days }}
-            <div class="text-xs text-red-300 mt-1">{{ form.fetch_window_days.errors }}</div>
+            <div class="text-xs text-red-700 mt-1">{{ form.fetch_window_days.errors }}</div>
           </div>
           <div>
-            <label class="block text-sm text-[#536471] mb-1">Posts per Account (Up To)</label>
+            <label class="block text-sm text-[#333333] mb-1">Posts per Account (Up To)</label>
             {{ form.fetch_posts_per_account }}
-            <div class="text-xs text-red-300 mt-1">{{ form.fetch_posts_per_account.errors }}</div>
+            <div class="text-xs text-red-700 mt-1">{{ form.fetch_posts_per_account.errors }}</div>
           </div>
         </div>
 

@@ -247,18 +247,18 @@ def _apply_dark_style(fig):
         template="plotly_white",
         paper_bgcolor="#F7F9F9",
         plot_bgcolor="#F7F9F9",
-        font={"color": "#0F1419", "family": "Inter, ui-sans-serif, system-ui", "size": 14},
+        font={"color": "#000000", "family": "Inter, ui-sans-serif, system-ui", "size": 14},
         margin={"l": 28, "r": 18, "t": 50, "b": 36},
         legend={
             "bgcolor": "rgba(0,0,0,0)",
-            "font": {"color": "#536471"},
+            "font": {"color": "#333333"},
             "orientation": "h",
             "yanchor": "bottom",
             "y": 1.02,
             "xanchor": "left",
             "x": 0,
         },
-        hoverlabel={"bgcolor": "#0F1419", "font_color": "#F9FAFB"},
+        hoverlabel={"bgcolor": "#000000", "font_color": "#F9FAFB"},
     )
     fig.update_xaxes(gridcolor="#EFF3F4", linecolor="#EFF3F4", zerolinecolor="#EFF3F4")
     fig.update_yaxes(gridcolor="#EFF3F4", linecolor="#EFF3F4", zerolinecolor="#EFF3F4")

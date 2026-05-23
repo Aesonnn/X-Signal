@@ -24,7 +24,7 @@ class SignUpForm(UserCreationForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        field_class = "w-full rounded-md border border-[#EFF3F4] bg-[#FFFFFF] px-3 py-2 text-sm text-[#0F1419]"
+        field_class = "w-full rounded-md border border-[#EFF3F4] bg-[#FFFFFF] px-3 py-2 text-sm text-[#000000]"
         for name in ("username", "email", "password1", "password2"):
             self.fields[name].widget.attrs.update({"class": field_class})
 
@@ -66,30 +66,30 @@ class UserDashboardForm(forms.ModelForm):
             self.fields["name"].max_length = DASHBOARD_NAME_MAX_LENGTH
         self.fields["name"].widget.attrs.update(
             {
-                "class": "w-full rounded-md border border-[#EFF3F4] bg-[#FFFFFF] px-3 py-2 text-sm text-[#0F1419]",
+                "class": "w-full rounded-md border border-[#EFF3F4] bg-[#FFFFFF] px-3 py-2 text-sm text-[#000000]",
                 **({"maxlength": str(DASHBOARD_NAME_MAX_LENGTH)} if self._enforce_name_limit else {}),
             }
         )
         self.fields["selected_accounts"].widget.attrs.update(
             {
-                "class": "w-full rounded-md border border-[#EFF3F4] bg-[#FFFFFF] px-3 py-2 text-sm text-[#0F1419]"
+                "class": "w-full rounded-md border border-[#EFF3F4] bg-[#FFFFFF] px-3 py-2 text-sm text-[#000000]"
             }
         )
         self.fields["x_api_key"].widget.attrs.update(
             {
-                "class": "w-full rounded-md border border-[#EFF3F4] bg-[#FFFFFF] px-3 py-2 text-sm text-[#0F1419]"
+                "class": "w-full rounded-md border border-[#EFF3F4] bg-[#FFFFFF] px-3 py-2 text-sm text-[#000000]"
             }
         )
         self.fields["fetch_window_days"].widget.attrs.update(
             {
-                "class": "w-full rounded-md border border-[#EFF3F4] bg-[#FFFFFF] px-3 py-2 text-sm text-[#0F1419]",
+                "class": "w-full rounded-md border border-[#EFF3F4] bg-[#FFFFFF] px-3 py-2 text-sm text-[#000000]",
                 "min": str(FETCH_WINDOW_DAYS_MIN),
                 "oninput": f"if(this.value!=='' && Number(this.value)<{FETCH_WINDOW_DAYS_MIN})this.value={FETCH_WINDOW_DAYS_MIN};",
             }
         )
         self.fields["fetch_posts_per_account"].widget.attrs.update(
             {
-                "class": "w-full rounded-md border border-[#EFF3F4] bg-[#FFFFFF] px-3 py-2 text-sm text-[#0F1419]",
+                "class": "w-full rounded-md border border-[#EFF3F4] bg-[#FFFFFF] px-3 py-2 text-sm text-[#000000]",
                 "min": str(FETCH_POSTS_PER_ACCOUNT_MIN),
                 "oninput": f"if(this.value!=='' && Number(this.value)<{FETCH_POSTS_PER_ACCOUNT_MIN})this.value={FETCH_POSTS_PER_ACCOUNT_MIN};",
             }

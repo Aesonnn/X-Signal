@@ -15,8 +15,8 @@
             xbg: "#FFFFFF",
             xpanel: "#F7F9F9",
             xline: "#EFF3F4",
-            xtext: "#0F1419",
-            xmuted: "#536471",
+            xtext: "#000000",
+            xmuted: "#333333",
             xblue: "#1D9BF0"
           }
         }
@@ -34,7 +34,7 @@
             <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5m-16.5 5.25h16.5m-16.5 5.25h16.5" />
           </svg>
         </button>
-        <div class="text-base font-semibold tracking-tight text-[#0F1419]">X-Signal</div>
+        <div class="text-base font-semibold tracking-tight text-[#000000]">X-Signal</div>
       </div>
 
       <div class="flex flex-wrap items-center gap-2 text-sm text-xmuted">
@@ -78,7 +78,7 @@
     {% if messages %}
       <section class="space-y-2">
         {% for message in messages %}
-          <div class="rounded-lg border px-4 py-3 text-sm {% if 'error' in message.tags %}border-red-500/60 bg-red-500/10 text-red-300{% elif 'success' in message.tags %}border-green-500/60 bg-green-500/10 text-green-300{% else %}border-xline bg-xpanel text-xtext{% endif %}">
+          <div class="rounded-lg border px-4 py-3 text-sm {% if 'error' in message.tags %}border-red-500/40 bg-red-500/10 text-red-700{% elif 'success' in message.tags %}border-green-500/40 bg-green-500/10 text-green-700{% else %}border-xline bg-xpanel text-xtext{% endif %}">
             {{ message }}
           </div>
         {% endfor %}
@@ -89,7 +89,7 @@
 
     <section class="rounded-2xl border-2 border-xline bg-xpanel p-6 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
       <div>
-        <h1 class="text-2xl md:text-3xl font-bold tracking-tight text-[#0F1419]">Sentiment Dashboard · {{ active_workspace_name }}</h1>
+        <h1 class="text-2xl md:text-3xl font-bold tracking-tight text-[#000000]">Sentiment Dashboard · {{ active_workspace_name }}</h1>
         <p class="mt-1 text-xmuted text-sm">Daily trend and affiliation sentiment distribution.</p>
       </div>
       <div class="w-full md:w-auto md:min-w-[250px] space-y-3">
@@ -130,7 +130,7 @@
         <!-- Global Trends Section -->
         <div class="mt-8 pt-6 border-t border-xline">
           <div class="mb-4 flex items-center justify-between gap-3">
-            <h2 class="text-xl font-bold tracking-tight text-[#0F1419]">Week Trends</h2>
+            <h2 class="text-xl font-bold tracking-tight text-[#000000]">Week Trends</h2>
             <form method="post" action="{% url 'ai_overview' %}" id="ai-overview-form">
               {% csrf_token %}
               <input type="hidden" name="affiliation" value="{{ selected_affiliation }}">
@@ -160,7 +160,7 @@
             <h3 class="text-sm font-medium text-xmuted mb-3">Top Discussion Topics (Last 7 Days)</h3>
             <div class="flex flex-wrap gap-2">
               {% for trend in global_trends_7d %}
-                <a href="https://x.com/search?q={{ trend.term|urlencode }}&src=typed_query" target="_blank" rel="noopener noreferrer" class="px-3 py-1 bg-xline rounded-full text-sm text-[#0F1419] border border-xline transition-colors hover:bg-xblue/35 hover:border-xblue hover:text-[#0F1419]">#{{ trend.term }}</a>
+                <a href="https://x.com/search?q={{ trend.term|urlencode }}&src=typed_query" target="_blank" rel="noopener noreferrer" class="px-3 py-1 bg-xline rounded-full text-sm text-[#000000] border border-xline transition-colors hover:bg-xblue/35 hover:border-xblue hover:text-[#000000]">#{{ trend.term }}</a>
               {% empty %}
                 <div class="text-sm text-xmuted">No 7-day trends available.</div>
               {% endfor %}
@@ -173,7 +173,7 @@
               <div class="inline-flex gap-2 min-w-max">
               {% for item in daily_top_trends_7d %}
                 {% if item.term != "N/A" %}
-                  <a href="https://x.com/search?q={{ item.term|urlencode }}&src=typed_query" target="_blank" rel="noopener noreferrer" class="shrink-0 rounded-lg border border-xline bg-xbg px-2.5 py-1.5 text-xs text-[#0F1419] transition-colors hover:bg-xblue/20 hover:border-xblue">
+                  <a href="https://x.com/search?q={{ item.term|urlencode }}&src=typed_query" target="_blank" rel="noopener noreferrer" class="shrink-0 rounded-lg border border-xline bg-xbg px-2.5 py-1.5 text-xs text-[#000000] transition-colors hover:bg-xblue/20 hover:border-xblue">
                     <div class="text-xmuted leading-tight">{{ item.day }}</div>
                     <div class="leading-tight mt-1">#{{ item.term }} <span class="text-xmuted">({{ item.count }})</span></div>
                   </a>
@@ -205,7 +205,7 @@
                 <div class="flex items-center gap-2 whitespace-nowrap">
                   <h4 class="text-xs font-semibold text-xtext">{{ aff }}</h4>
                   {% for trend in trends %}
-                    <a href="https://x.com/search?q={{ trend.term|urlencode }}&src=typed_query" target="_blank" rel="noopener noreferrer" class="rounded-md border border-xline px-2 py-0.5 text-xs text-[#0F1419] transition-colors hover:bg-xblue/35 hover:text-[#0F1419]">#{{ trend.term }} ({{ trend.count }})</a>
+                    <a href="https://x.com/search?q={{ trend.term|urlencode }}&src=typed_query" target="_blank" rel="noopener noreferrer" class="rounded-md border border-xline px-2 py-0.5 text-xs text-[#000000] transition-colors hover:bg-xblue/35 hover:text-[#000000]">#{{ trend.term }} ({{ trend.count }})</a>
                   {% empty %}
                     <div class="text-xs text-xmuted">No trends.</div>
                   {% endfor %}
@@ -235,7 +235,7 @@
 
     <!-- Correlation Analysis -->
     <section class="rounded-2xl border-2 border-xline bg-xpanel p-6">
-      <h2 class="text-xl font-bold tracking-tight text-[#0F1419] mb-4">Sentiment Correlation Analysis</h2>
+      <h2 class="text-xl font-bold tracking-tight text-[#000000] mb-4">Sentiment Correlation Analysis</h2>
       <p class="text-sm text-xmuted mb-4">Correlation coefficients (-1.0 to 1.0) between sentiment score and public metrics. Positive values indicate higher sentiment aligns with higher engagement. Values are shown for all available data and for the last 7 days.</p>
       
       <div class="overflow-x-auto">
@@ -256,7 +256,7 @@
           <tbody>
             {% for row in correlation_data %}
               <tr class="border-b border-xline last:border-0 hover:bg-xline/10 transition">
-                <td class="px-4 py-3 font-medium text-[#0F1419]">
+                <td class="px-4 py-3 font-medium text-[#000000]">
                   {{ row.affiliation }}
                 </td>
                 <td class="px-4 py-3">{{ row.like_count }}</td>
@@ -275,10 +275,10 @@
 
       {% if correlation_insights %}
         <div class="mt-5 space-y-2">
-          <h3 class="text-sm font-semibold text-[#0F1419]">Interpretation</h3>
+          <h3 class="text-sm font-semibold text-[#000000]">Interpretation</h3>
           {% for insight in correlation_insights %}
             <div class="rounded-lg border border-xline bg-xbg px-4 py-3">
-              <div class="text-sm font-medium text-[#0F1419]">{{ insight.affiliation }}</div>
+              <div class="text-sm font-medium text-[#000000]">{{ insight.affiliation }}</div>
               <p class="mt-1 text-sm text-xmuted">{{ insight.summary|linebreaksbr }}</p>
             </div>
           {% endfor %}
@@ -595,7 +595,7 @@
           });
           
           const newLayout = JSON.parse(JSON.stringify(originalBarLayout || {}));
-            // newLayout.title = { text: `Sentiment Distribution for ${dayLabel}`, font: { color: "#0F1419" } };
+            // newLayout.title = { text: `Sentiment Distribution for ${dayLabel}`, font: { color: "#000000" } };
           
           Plotly.react(chartDiv, traces, newLayout);
       }
