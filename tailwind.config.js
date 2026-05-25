@@ -6,7 +6,16 @@ module.exports = {
     "./templates/**/*.html"
   ],
   theme: {
-    extend: {},
+    extend: {
+      colors: {
+        xbg: "#FFFFFF",
+        xpanel: "#F7F9F9",
+        xline: "#EFF3F4",
+        xtext: "#000000",
+        xmuted: "#333333",
+        xblue: "#1D9BF0",
+      },
+    },
   },
   plugins: [],
 }
