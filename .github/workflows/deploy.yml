@@ -40,4 +40,6 @@ jobs:
             pip install gunicorn
             python manage.py migrate --noinput
             python manage.py collectstatic --noinput
+            chmod 755 /home/${{ secrets.SSH_USER }}
+            chmod -R 755 /home/${{ secrets.SSH_USER }}/X-Signal/staticfiles
             sudo systemctl restart xsignal
