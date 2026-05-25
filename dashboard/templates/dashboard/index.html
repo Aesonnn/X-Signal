@@ -1,12 +1,14 @@
+{% load static %}
 <!doctype html>
 <html lang="en" class="h-full" style="font-size: 120%;">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>X-Signal Dashboard</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.plot.ly/plotly-3.4.0.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <link rel="stylesheet" href="{% static 'dashboard/css/output.css' %}" />
+  <script src="{% static 'dashboard/js/plotly-3.4.0.min.js' %}"></script>
+  <script src="{% static 'dashboard/js/marked.min.js' %}"></script>
+  <!-- <link rel="stylesheet" href="{% static 'dashboard/css/styles.css' %}" /> -->
   <script>
     tailwind.config = {
       theme: {
@@ -23,7 +25,6 @@
       }
     }
   </script>
-  <link rel="stylesheet" href="/static/dashboard/css/styles.css" />
 </head>
 <body class="min-h-full bg-xbg text-xtext font-sans">
   <header class="sticky top-0 z-40 bg-xbg/95 backdrop-blur">
