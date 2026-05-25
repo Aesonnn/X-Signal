@@ -14,20 +14,21 @@
 }
 
 /* Markdown prose styling for n8n reply */
-.prose-invert h1, .prose-invert h2, .prose-invert h3, .prose-invert h4 {
-  color: #E7E9EA;
+.prose h1, .prose h2, .prose h3, .prose h4 {
+  color: #000000;
   margin-top: 1em;
   margin-bottom: 0.5em;
   font-weight: 600;
 }
-.prose-invert h1 { font-size: 1.25rem; }
-.prose-invert h2 { font-size: 1.125rem; }
-.prose-invert h3 { font-size: 1rem; }
-.prose-invert p { margin-bottom: 0.75em; line-height: 1.6; }
-.prose-invert ul, .prose-invert ol { padding-left: 1.5em; margin-bottom: 0.75em; }
-.prose-invert li { margin-bottom: 0.25em; }
-.prose-invert ul { list-style-type: disc; }
-.prose-invert ol { list-style-type: decimal; }
+.prose h1 { font-size: 1.25rem; }
+.prose h2 { font-size: 1.125rem; }
+.prose h3 { font-size: 1rem; }
+.prose p { margin-bottom: 0.75em; line-height: 1.6; }
+.prose ul, .prose ol { padding-left: 1.5em; margin-bottom: 0.75em; }
+.prose li { margin-bottom: 0.25em; }
+.prose ul { list-style-type: disc; }
+.prose ol { list-style-type: decimal; }
+.prose strong { color: #000000; }
 .prose-invert code { background: #2F3336; padding: 0.15em 0.35em; border-radius: 4px; font-size: 0.875em; }
 .prose-invert pre { background: #1a1a1a; border: 1px solid #2F3336; border-radius: 8px; padding: 0.75em 1em; overflow-x: auto; margin-bottom: 0.75em; }
 .prose-invert pre code { background: none; padding: 0; }

@@ -1327,45 +1327,49 @@ video {
 
 /* Markdown prose styling for n8n reply */
 
-.prose-invert h1, .prose-invert h2, .prose-invert h3, .prose-invert h4 {
-  color: #E7E9EA;
+.prose h1, .prose h2, .prose h3, .prose h4 {
+  color: #000000;
   margin-top: 1em;
   margin-bottom: 0.5em;
   font-weight: 600;
 }
 
-.prose-invert h1 {
+.prose h1 {
   font-size: 1.25rem;
 }
 
-.prose-invert h2 {
+.prose h2 {
   font-size: 1.125rem;
 }
 
-.prose-invert h3 {
+.prose h3 {
   font-size: 1rem;
 }
 
-.prose-invert p {
+.prose p {
   margin-bottom: 0.75em;
   line-height: 1.6;
 }
 
-.prose-invert ul, .prose-invert ol {
+.prose ul, .prose ol {
   padding-left: 1.5em;
   margin-bottom: 0.75em;
 }
 
-.prose-invert li {
+.prose li {
   margin-bottom: 0.25em;
 }
 
-.prose-invert ul {
+.prose ul {
   list-style-type: disc;
 }
 
-.prose-invert ol {
+.prose ol {
   list-style-type: decimal;
+}
+
+.prose strong {
+  color: #000000;
 }
 
 .prose-invert code {
