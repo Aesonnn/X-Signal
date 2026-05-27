@@ -61,6 +61,9 @@ def _build_time_window(days: int) -> tuple[str, str]:
     min_supported_start = now_utc - timedelta(days=7)
     if start_utc < min_supported_start:
         start_utc = min_supported_start
+    
+    start_utc += timedelta(hours=1)
+
     return (
         start_utc.strftime("%Y-%m-%dT%H:%M:%SZ"),
         end_utc.strftime("%Y-%m-%dT%H:%M:%SZ"),
