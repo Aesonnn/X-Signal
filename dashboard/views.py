@@ -47,6 +47,8 @@ User = get_user_model()
 AFFILIATION_DISPLAY = {
     "C": "Conservative",
     "L": "Liberal",
+    "Conservative (C)": "Conservative",
+    "Liberal (L)": "Liberal",
 }
 
 
